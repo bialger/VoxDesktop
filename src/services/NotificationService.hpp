@@ -7,14 +7,14 @@ namespace vox::services {
 
 class NotificationService final : public INotificationService {
 public:
-    explicit NotificationService(bool showPreviews);
+  explicit NotificationService(bool showPreviews);
 
-    QString notificationPreview(const QString &sender, const QString &message) const override;
+  QString notificationPreview(const QString &sender, const QString &message) const override;
 
-    void setShowPreviews(bool enabled);
+  void setShowPreviews(bool enabled);
 
 private:
-    bool m_showPreviews{false};
+  bool m_showPreviews{false};
 };
 
 } // namespace vox::services

@@ -6,10 +6,7 @@
 
 namespace vox::crypto {
 
-QByteArray hkdfSha256(QByteArrayView ikm,
-                      QByteArrayView salt,
-                      QByteArrayView info,
-                      qsizetype outputLen);
+QByteArray hkdfSha256(QByteArrayView ikm, QByteArrayView salt, QByteArrayView info, qsizetype outputLen);
 
 } // namespace vox::crypto
 

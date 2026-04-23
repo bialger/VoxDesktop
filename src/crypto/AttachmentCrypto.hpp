@@ -8,21 +8,21 @@
 namespace vox::crypto {
 
 struct EncryptedAttachmentChunk {
-    QByteArray nonce;
-    QByteArray ciphertext;
-    QByteArray sha256;
+  QByteArray nonce;
+  QByteArray ciphertext;
+  QByteArray sha256;
 };
 
 class AttachmentCrypto final {
 public:
-    static std::optional<EncryptedAttachmentChunk> encryptChunk(QByteArrayView key32,
-                                                                QByteArrayView plaintext,
-                                                                QByteArrayView ad);
+  static std::optional<EncryptedAttachmentChunk> encryptChunk(QByteArrayView key32,
+                                                              QByteArrayView plaintext,
+                                                              QByteArrayView ad);
 
-    static std::optional<QByteArray> decryptChunk(QByteArrayView key32,
-                                                  QByteArrayView nonce,
-                                                  QByteArrayView ciphertext,
-                                                  QByteArrayView ad);
+  static std::optional<QByteArray> decryptChunk(QByteArrayView key32,
+                                                QByteArrayView nonce,
+                                                QByteArrayView ciphertext,
+                                                QByteArrayView ad);
 };
 
 } // namespace vox::crypto

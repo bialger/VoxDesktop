@@ -9,10 +9,10 @@ namespace vox::platform {
 
 class SecureWrap {
 public:
-    virtual ~SecureWrap() = default;
+  virtual ~SecureWrap() = default;
 
-    virtual bool store(const QString &key, QByteArray value) = 0;
-    virtual std::optional<QByteArray> load(const QString &key) const = 0;
+  virtual bool store(const QString &key, QByteArray value) = 0;
+  virtual std::optional<QByteArray> load(const QString &key) const = 0;
 };
 
 } // namespace vox::platform

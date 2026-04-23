@@ -10,13 +10,13 @@ namespace vox::ui::devices {
 
 class DevicesPage final : public QWidget {
 public:
-    explicit DevicesPage(QWidget *parent = nullptr);
+  explicit DevicesPage(QWidget *parent = nullptr);
 
-    DevicesModel *model();
+  DevicesModel *model();
 
 private:
-    DevicesModel *m_model{nullptr};
-    QListView *m_listView{nullptr};
+  DevicesModel *m_model{nullptr};
+  QListView *m_listView{nullptr};
 };
 
 } // namespace vox::ui::devices

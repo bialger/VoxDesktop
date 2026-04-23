@@ -8,29 +8,29 @@
 namespace {
 
 void ensureQtCoreApplication() {
-    if (QCoreApplication::instance() != nullptr) {
-        return;
-    }
+  if (QCoreApplication::instance() != nullptr) {
+    return;
+  }
 
-    static int argc = 1;
-    static char appName[] = "vox-integration-tests";
-    static char *argv[] = {appName, nullptr};
-    static QCoreApplication *app = new QCoreApplication(argc, argv);
-    (void)app;
+  static int argc = 1;
+  static char appName[] = "vox-integration-tests";
+  static char *argv[] = {appName, nullptr};
+  static QCoreApplication *app = new QCoreApplication(argc, argv);
+  (void) app;
 }
 
 } // namespace
 
 void ProjectIntegrationTestSuite::SetUp() {
-    ensureQtCoreApplication();
+  ensureQtCoreApplication();
 
-    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
-    temporaryDirectory = std::filesystem::temp_directory_path() /
-                         std::filesystem::path("vox_integration_" + std::to_string(stamp));
-    std::filesystem::create_directories(temporaryDirectory);
+  const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+  temporaryDirectory =
+      std::filesystem::temp_directory_path() / std::filesystem::path("vox_integration_" + std::to_string(stamp));
+  std::filesystem::create_directories(temporaryDirectory);
 }
 
 void ProjectIntegrationTestSuite::TearDown() {
-    std::error_code ec;
-    std::filesystem::remove_all(temporaryDirectory, ec);
+  std::error_code ec;
+  std::filesystem::remove_all(temporaryDirectory, ec);
 }

@@ -12,24 +12,24 @@
 namespace vox::ui::conversations {
 
 class ConversationView final : public QWidget {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    explicit ConversationView(QWidget *parent = nullptr);
+  explicit ConversationView(QWidget *parent = nullptr);
 
-    void setConversationTitle(const QString &title);
-    void setShowAuthors(bool show);
-    MessageListModel *model();
+  void setConversationTitle(const QString &title);
+  void setShowAuthors(bool show);
+  MessageListModel *model();
 
 signals:
-    void sendMessageRequested(const QString &text);
+  void sendMessageRequested(const QString &text);
 
 private:
-    QLabel *m_title{nullptr};
-    QListView *m_messagesView{nullptr};
-    MessageListModel *m_messagesModel{nullptr};
-    ComposerWidget *m_composer{nullptr};
-    MessageBubbleDelegate *m_delegate{nullptr};
+  QLabel *m_title{nullptr};
+  QListView *m_messagesView{nullptr};
+  MessageListModel *m_messagesModel{nullptr};
+  ComposerWidget *m_composer{nullptr};
+  MessageBubbleDelegate *m_delegate{nullptr};
 };
 
 } // namespace vox::ui::conversations

@@ -7,17 +7,17 @@
 namespace vox::network {
 
 struct VoidResult {
-    bool ok{false};
-    int statusCode{0};
-    QString error;
+  bool ok{false};
+  int statusCode{0};
+  QString error;
 };
 
-template <typename T>
+template<typename T>
 struct ApiResult {
-    bool ok{false};
-    int statusCode{0};
-    QString error;
-    std::optional<T> data;
+  bool ok{false};
+  int statusCode{0};
+  QString error;
+  std::optional<T> data;
 };
 
 } // namespace vox::network

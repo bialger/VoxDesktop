@@ -7,10 +7,10 @@
 
 class ProjectIntegrationTestSuite : public testing::Test {
 protected:
-    std::filesystem::path temporaryDirectory;
+  std::filesystem::path temporaryDirectory;
 
-    void SetUp() override;
-    void TearDown() override;
+  void SetUp() override;
+  void TearDown() override;
 };
 
 #endif // VOX_TESTS_PROJECTINTEGRATIONTESTSUITE_HPP

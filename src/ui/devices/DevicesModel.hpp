@@ -9,18 +9,18 @@ namespace vox::ui::devices {
 
 class DevicesModel final : public QAbstractListModel {
 public:
-    enum Role { DeviceIdRole = Qt::UserRole + 1, LabelRole, TrustRole, LastSeenRole };
+  enum Role { DeviceIdRole = Qt::UserRole + 1, LabelRole, TrustRole, LastSeenRole };
 
-    explicit DevicesModel(QObject *parent = nullptr);
+  explicit DevicesModel(QObject *parent = nullptr);
 
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    QVariant data(const QModelIndex &index, int role) const override;
-    QHash<int, QByteArray> roleNames() const override;
+  int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+  QVariant data(const QModelIndex &index, int role) const override;
+  QHash<int, QByteArray> roleNames() const override;
 
-    void setDevices(QVector<domain::Device> devices);
+  void setDevices(QVector<domain::Device> devices);
 
 private:
-    QVector<domain::Device> m_devices;
+  QVector<domain::Device> m_devices;
 };
 
 } // namespace vox::ui::devices

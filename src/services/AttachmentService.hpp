@@ -9,17 +9,17 @@ namespace vox::services {
 
 class AttachmentService final : public IAttachmentService {
 public:
-    AttachmentService(network::AttachmentsApi &api, storage::FileStore &fileStore);
+  AttachmentService(network::AttachmentsApi &api, storage::FileStore &fileStore);
 
-    std::optional<QString> uploadEncrypted(const QString &conversationId,
-                                           QByteArrayView ciphertext,
-                                           const QString &mimeHint) override;
+  std::optional<QString> uploadEncrypted(const QString &conversationId,
+                                         QByteArrayView ciphertext,
+                                         const QString &mimeHint) override;
 
-    std::optional<QByteArray> downloadEncrypted(const QString &attachmentId) override;
+  std::optional<QByteArray> downloadEncrypted(const QString &attachmentId) override;
 
 private:
-    network::AttachmentsApi &m_api;
-    storage::FileStore &m_fileStore;
+  network::AttachmentsApi &m_api;
+  storage::FileStore &m_fileStore;
 };
 
 } // namespace vox::services

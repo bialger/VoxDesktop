@@ -15,33 +15,33 @@ namespace vox::services {
 
 class AuthService final : public IAuthService {
 public:
-    AuthService(network::AuthApi &authApi,
-                network::NetworkAccess &networkAccess,
-                storage::IAccountsRepository &accountsRepository,
-                crypto::VaultService &vaultService,
-                crypto::IdentityKeyStore &identityKeyStore,
-                crypto::PrekeyManager &prekeyManager,
-                QString serverId,
-                QString deviceId);
+  AuthService(network::AuthApi &authApi,
+              network::NetworkAccess &networkAccess,
+              storage::IAccountsRepository &accountsRepository,
+              crypto::VaultService &vaultService,
+              crypto::IdentityKeyStore &identityKeyStore,
+              crypto::PrekeyManager &prekeyManager,
+              QString serverId,
+              QString deviceId);
 
-    bool registerUser(const QString &username, const QString &passwordDerived) override;
-    bool login(const QString &username, const QString &passwordDerived) override;
-    bool restoreSession() override;
-    bool logout() override;
-    std::optional<AuthContext> context() const override;
+  bool registerUser(const QString &username, const QString &passwordDerived) override;
+  bool login(const QString &username, const QString &passwordDerived) override;
+  bool restoreSession() override;
+  bool logout() override;
+  std::optional<AuthContext> context() const override;
 
 private:
-    bool persistSession(const QString &username, const network::AuthSessionResponse &response);
+  bool persistSession(const QString &username, const network::AuthSessionResponse &response);
 
-    network::AuthApi &m_authApi;
-    network::NetworkAccess &m_network;
-    storage::IAccountsRepository &m_accountsRepository;
-    crypto::VaultService &m_vault;
-    crypto::IdentityKeyStore &m_identity;
-    crypto::PrekeyManager &m_prekeys;
-    QString m_serverId;
-    QString m_deviceId;
-    std::optional<AuthContext> m_context;
+  network::AuthApi &m_authApi;
+  network::NetworkAccess &m_network;
+  storage::IAccountsRepository &m_accountsRepository;
+  crypto::VaultService &m_vault;
+  crypto::IdentityKeyStore &m_identity;
+  crypto::PrekeyManager &m_prekeys;
+  QString m_serverId;
+  QString m_deviceId;
+  std::optional<AuthContext> m_context;
 };
 
 } // namespace vox::services

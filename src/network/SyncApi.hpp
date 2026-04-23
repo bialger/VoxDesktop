@@ -8,27 +8,25 @@
 namespace vox::network {
 
 struct SyncChangesResponse {
-    QVector<SyncRecordDto> records;
-    QString nextCursor;
-    bool hasMore{false};
+  QVector<SyncRecordDto> records;
+  QString nextCursor;
+  bool hasMore{false};
 };
 
 class SyncApi final {
 public:
-    explicit SyncApi(NetworkAccess &network);
+  explicit SyncApi(NetworkAccess &network);
 
-    ApiResult<SyncKeyBundleDto> getKeyBundle() const;
-    VoidResult putKeyBundle(const SyncKeyBundleDto &bundle) const;
+  ApiResult<SyncKeyBundleDto> getKeyBundle() const;
+  VoidResult putKeyBundle(const SyncKeyBundleDto &bundle) const;
 
-    ApiResult<SyncChangesResponse> changes(const QString &collection,
-                                           const QString &cursor,
-                                           int limit) const;
+  ApiResult<SyncChangesResponse> changes(const QString &collection, const QString &cursor, int limit) const;
 
-    VoidResult putRecord(const SyncRecordDto &record) const;
-    VoidResult deleteRecord(const QString &collection, const QString &recordId) const;
+  VoidResult putRecord(const SyncRecordDto &record) const;
+  VoidResult deleteRecord(const QString &collection, const QString &recordId) const;
 
 private:
-    NetworkAccess &m_network;
+  NetworkAccess &m_network;
 };
 
 } // namespace vox::network

@@ -10,168 +10,168 @@
 namespace vox::network {
 
 struct ApiError {
-    int code{0};
-    QString message;
+  int code{0};
+  QString message;
 };
 
 struct RegisterRequest {
-    QString username;
-    QString passwordDerivedValue;
-    QString deviceId;
-    QString deviceLabel;
-    QString identityKeyPublic;
-    QString signedPrekeyPublic;
-    QString signedPrekeySignature;
-    QString wrappedSyncKey;
-    QString syncWrapSalt;
-    QJsonObject syncWrapParams;
+  QString username;
+  QString passwordDerivedValue;
+  QString deviceId;
+  QString deviceLabel;
+  QString identityKeyPublic;
+  QString signedPrekeyPublic;
+  QString signedPrekeySignature;
+  QString wrappedSyncKey;
+  QString syncWrapSalt;
+  QJsonObject syncWrapParams;
 };
 
 struct LoginRequest {
-    QString username;
-    QString passwordDerivedValue;
-    QString deviceId;
-    QString deviceLabel;
-    QString identityKeyPublic;
-    QString signedPrekeyPublic;
-    QString signedPrekeySignature;
+  QString username;
+  QString passwordDerivedValue;
+  QString deviceId;
+  QString deviceLabel;
+  QString identityKeyPublic;
+  QString signedPrekeyPublic;
+  QString signedPrekeySignature;
 };
 
 struct AuthSessionResponse {
-    QString userId;
-    QString accessToken;
-    QString refreshToken;
-    QString deviceStatus;
-    int syncKeyVersion{0};
+  QString userId;
+  QString accessToken;
+  QString refreshToken;
+  QString deviceStatus;
+  int syncKeyVersion{0};
 };
 
 struct RefreshRequest {
-    QString refreshToken;
-    QString deviceId;
+  QString refreshToken;
+  QString deviceId;
 };
 
 struct RefreshResponse {
-    QString accessToken;
-    QString refreshToken;
+  QString accessToken;
+  QString refreshToken;
 };
 
 struct MeResponse {
-    QString userId;
-    QString username;
-    QString currentDeviceId;
-    int syncKeyVersion{0};
+  QString userId;
+  QString username;
+  QString currentDeviceId;
+  int syncKeyVersion{0};
 };
 
 struct DirectoryUser {
-    QString userId;
-    QString username;
+  QString userId;
+  QString username;
 };
 
 struct DeviceDirectoryEntry {
-    QString deviceId;
-    QString deviceLabel;
-    QString identityKeyPublic;
-    QString signedPrekeyPublic;
-    QString signedPrekeySignature;
+  QString deviceId;
+  QString deviceLabel;
+  QString identityKeyPublic;
+  QString signedPrekeyPublic;
+  QString signedPrekeySignature;
 };
 
 struct ConversationCreateRequest {
-    QString type;
-    QString peerUserId;
-    QVector<QString> members;
-    QVector<QString> admins;
-    QVector<QString> subscribers;
+  QString type;
+  QString peerUserId;
+  QVector<QString> members;
+  QVector<QString> admins;
+  QVector<QString> subscribers;
 };
 
 struct ConversationCreateResponse {
-    QString conversationId;
+  QString conversationId;
 };
 
 struct ConversationSummaryDto {
-    QString conversationId;
-    int type{0};
-    QString createdBy;
-    QString createdByUsername;
-    qint64 createdAt{0};
-    int membershipVersion{0};
-    QString myRole;
-    QString title;
-    QString channelPostPolicy;
-    std::optional<QString> peerUserId;
+  QString conversationId;
+  int type{0};
+  QString createdBy;
+  QString createdByUsername;
+  qint64 createdAt{0};
+  int membershipVersion{0};
+  QString myRole;
+  QString title;
+  QString channelPostPolicy;
+  std::optional<QString> peerUserId;
 };
 
 struct ConversationMemberDto {
-    QString userId;
-    QString username;
-    QString role;
+  QString userId;
+  QString username;
+  QString role;
 };
 
 struct ConversationMembersResponseDto {
-    QString conversationId;
-    int membershipVersion{0};
-    QVector<ConversationMemberDto> members;
-    QVector<ConversationMemberDto> admins;
-    QVector<ConversationMemberDto> subscribers;
-    QString subscriptionState;
-    int memberCount{0};
+  QString conversationId;
+  int membershipVersion{0};
+  QVector<ConversationMemberDto> members;
+  QVector<ConversationMemberDto> admins;
+  QVector<ConversationMemberDto> subscribers;
+  QString subscriptionState;
+  int memberCount{0};
 };
 
 struct SendEnvelopeRequest {
-    QString deviceId;
-    QString conversationId;
-    QString ciphertext;
-    QString envelopeId;
-    int envelopeType{0};
-    std::optional<int> orderingEpoch;
+  QString deviceId;
+  QString conversationId;
+  QString ciphertext;
+  QString envelopeId;
+  int envelopeType{0};
+  std::optional<int> orderingEpoch;
 };
 
 struct SendEnvelopeResponse {
-    QString envelopeId;
-    qint64 serverTimestamp{0};
-    int deliveredToCount{0};
+  QString envelopeId;
+  qint64 serverTimestamp{0};
+  int deliveredToCount{0};
 };
 
 struct EnvelopeDto {
-    QString envelopeId;
-    QString conversationId;
-    QString senderUserId;
-    QString senderDeviceId;
-    QString ciphertext;
-    qint64 serverTimestamp{0};
-    int envelopeType{0};
-    std::optional<int> orderingEpoch;
+  QString envelopeId;
+  QString conversationId;
+  QString senderUserId;
+  QString senderDeviceId;
+  QString ciphertext;
+  qint64 serverTimestamp{0};
+  int envelopeType{0};
+  std::optional<int> orderingEpoch;
 };
 
 struct EnvelopeBatchResponse {
-    QVector<EnvelopeDto> envelopes;
-    QString nextCursor;
-    bool hasMore{false};
+  QVector<EnvelopeDto> envelopes;
+  QString nextCursor;
+  bool hasMore{false};
 };
 
 struct AttachmentUploadInitRequest {
-    QString conversationId;
-    qint64 fileSize{0};
-    QString mimeHint;
+  QString conversationId;
+  qint64 fileSize{0};
+  QString mimeHint;
 };
 
 struct AttachmentUploadInitResponse {
-    QString attachmentId;
-    QString blobPath;
+  QString attachmentId;
+  QString blobPath;
 };
 
 struct SyncRecordDto {
-    QString collection;
-    QString recordId;
-    int version{0};
-    QString ciphertext;
-    bool deleted{false};
+  QString collection;
+  QString recordId;
+  int version{0};
+  QString ciphertext;
+  bool deleted{false};
 };
 
 struct SyncKeyBundleDto {
-    int version{0};
-    QString wrappedSyncKey;
-    QString syncWrapSalt;
-    QJsonObject syncWrapParams;
+  int version{0};
+  QString wrappedSyncKey;
+  QString syncWrapSalt;
+  QJsonObject syncWrapParams;
 };
 
 QJsonObject toJson(const RegisterRequest &req);

@@ -5,7 +5,7 @@
 namespace vox::crypto {
 
 bool ensureSodiumInitialized() {
-    return sodium_init() >= 0;
+  return sodium_init() >= 0;
 }
 
 } // namespace vox::crypto

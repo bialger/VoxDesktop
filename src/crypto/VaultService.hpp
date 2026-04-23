@@ -10,25 +10,25 @@ namespace vox::crypto {
 
 class VaultService final {
 public:
-    explicit VaultService(QString vaultPath);
+  explicit VaultService(QString vaultPath);
 
-    bool unlockWithPassword(const QString &password);
-    bool isUnlocked() const;
-    void lock();
+  bool unlockWithPassword(const QString &password);
+  bool isUnlocked() const;
+  void lock();
 
-    bool storeSecret(const QString &name, QByteArray value);
-    std::optional<QByteArray> loadSecret(const QString &name) const;
-    bool removeSecret(const QString &name);
+  bool storeSecret(const QString &name, QByteArray value);
+  std::optional<QByteArray> loadSecret(const QString &name) const;
+  bool removeSecret(const QString &name);
 
 private:
-    bool loadExistingVault(const QString &password);
-    bool saveVault();
+  bool loadExistingVault(const QString &password);
+  bool saveVault();
 
-    QString m_vaultPath;
-    QByteArray m_vaultKey;
-    QByteArray m_salt;
-    QHash<QString, QByteArray> m_secrets;
-    bool m_unlocked{false};
+  QString m_vaultPath;
+  QByteArray m_vaultKey;
+  QByteArray m_salt;
+  QHash<QString, QByteArray> m_secrets;
+  bool m_unlocked{false};
 };
 
 } // namespace vox::crypto

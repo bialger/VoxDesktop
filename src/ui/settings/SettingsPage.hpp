@@ -7,7 +7,7 @@ namespace vox::ui::settings {
 
 class SettingsPage final : public QWidget {
 public:
-    explicit SettingsPage(QWidget *parent = nullptr);
+  explicit SettingsPage(QWidget *parent = nullptr);
 };
 
 } // namespace vox::ui::settings

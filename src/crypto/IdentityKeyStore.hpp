@@ -9,21 +9,21 @@
 namespace vox::crypto {
 
 struct IdentityKeys {
-    QByteArray signingPublic;
-    QByteArray signingPrivate;
-    QByteArray dhPublic;
-    QByteArray dhPrivate;
+  QByteArray signingPublic;
+  QByteArray signingPrivate;
+  QByteArray dhPublic;
+  QByteArray dhPrivate;
 };
 
 class IdentityKeyStore final {
 public:
-    explicit IdentityKeyStore(VaultService &vault);
+  explicit IdentityKeyStore(VaultService &vault);
 
-    bool ensureIdentityKeys();
-    std::optional<IdentityKeys> identityKeys() const;
+  bool ensureIdentityKeys();
+  std::optional<IdentityKeys> identityKeys() const;
 
 private:
-    VaultService &m_vault;
+  VaultService &m_vault;
 };
 
 } // namespace vox::crypto

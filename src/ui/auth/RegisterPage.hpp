@@ -8,18 +8,18 @@
 namespace vox::ui::auth {
 
 class RegisterPage final : public QWidget {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    explicit RegisterPage(QWidget *parent = nullptr);
+  explicit RegisterPage(QWidget *parent = nullptr);
 
 signals:
-    void submitRegister(const QString &username, const QString &passwordDerived);
-    void backRequested();
+  void submitRegister(const QString &username, const QString &passwordDerived);
+  void backRequested();
 
 private:
-    QLineEdit *m_username{nullptr};
-    QLineEdit *m_password{nullptr};
+  QLineEdit *m_username{nullptr};
+  QLineEdit *m_password{nullptr};
 };
 
 } // namespace vox::ui::auth

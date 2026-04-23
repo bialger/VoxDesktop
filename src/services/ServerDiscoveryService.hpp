@@ -8,13 +8,13 @@ namespace vox::services {
 
 class ServerDiscoveryService final {
 public:
-    explicit ServerDiscoveryService(network::NetworkAccess &network);
+  explicit ServerDiscoveryService(network::NetworkAccess &network);
 
-    bool checkHealth() const;
-    bool validateProfile(const domain::ServerProfile &profile) const;
+  bool checkHealth() const;
+  bool validateProfile(const domain::ServerProfile &profile) const;
 
 private:
-    network::NetworkAccess &m_network;
+  network::NetworkAccess &m_network;
 };
 
 } // namespace vox::services

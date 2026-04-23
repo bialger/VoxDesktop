@@ -10,19 +10,19 @@ namespace vox::crypto {
 
 class SenderKeyManager final {
 public:
-    int currentEpoch(const QString &conversationId) const;
-    std::optional<QByteArray> keyForEpoch(const QString &conversationId, int epoch) const;
+  int currentEpoch(const QString &conversationId) const;
+  std::optional<QByteArray> keyForEpoch(const QString &conversationId, int epoch) const;
 
-    QByteArray rotateEpoch(const QString &conversationId);
-    bool importEpochKey(const QString &conversationId, int epoch, QByteArray key);
+  QByteArray rotateEpoch(const QString &conversationId);
+  bool importEpochKey(const QString &conversationId, int epoch, QByteArray key);
 
 private:
-    struct EpochState {
-        int currentEpoch{0};
-        QHash<int, QByteArray> keys;
-    };
+  struct EpochState {
+    int currentEpoch{0};
+    QHash<int, QByteArray> keys;
+  };
 
-    QHash<QString, EpochState> m_conversations;
+  QHash<QString, EpochState> m_conversations;
 };
 
 } // namespace vox::crypto

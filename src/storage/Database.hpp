@@ -8,23 +8,23 @@ namespace vox::storage {
 
 class Database final {
 public:
-    Database();
-    ~Database();
+  Database();
+  ~Database();
 
-    bool open(const QString &databasePath);
-    void close();
+  bool open(const QString &databasePath);
+  void close();
 
-    [[nodiscard]] bool isOpen() const;
-    [[nodiscard]] bool isOnOwnerThread() const;
+  [[nodiscard]] bool isOpen() const;
+  [[nodiscard]] bool isOnOwnerThread() const;
 
-    [[nodiscard]] QSqlDatabase database() const;
-    [[nodiscard]] QString lastError() const;
+  [[nodiscard]] QSqlDatabase database() const;
+  [[nodiscard]] QString lastError() const;
 
 private:
-    QString m_connectionName;
-    QSqlDatabase m_database;
-    QString m_lastError;
-    Qt::HANDLE m_ownerThread{nullptr};
+  QString m_connectionName;
+  QSqlDatabase m_database;
+  QString m_lastError;
+  Qt::HANDLE m_ownerThread{nullptr};
 };
 
 } // namespace vox::storage

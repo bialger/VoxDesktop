@@ -8,19 +8,17 @@ namespace vox::services {
 
 class SearchService final : public ISearchService {
 public:
-    SearchService(storage::ISearchRepository &repository, QByteArray searchIndexKey);
+  SearchService(storage::ISearchRepository &repository, QByteArray searchIndexKey);
 
-    bool indexMessage(const QString &conversationId,
-                      const QString &messageId,
-                      const QString &plaintext) override;
+  bool indexMessage(const QString &conversationId, const QString &messageId, const QString &plaintext) override;
 
-    QVector<QString> findMessageIds(const QString &query) const override;
+  QVector<QString> findMessageIds(const QString &query) const override;
 
 private:
-    QVector<QString> tokenize(const QString &text) const;
+  QVector<QString> tokenize(const QString &text) const;
 
-    storage::ISearchRepository &m_repository;
-    QByteArray m_searchIndexKey;
+  storage::ISearchRepository &m_repository;
+  QByteArray m_searchIndexKey;
 };
 
 } // namespace vox::services

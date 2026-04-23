@@ -10,27 +10,27 @@ namespace vox::ui::conversations {
 
 class ConversationListModel final : public QAbstractListModel {
 public:
-    enum Role {
-        ConversationIdRole = Qt::UserRole + 1,
-        TitleRole,
-        TypeRole,
-        TypeLabelRole,
-        UnreadCountRole,
-        LastMessageAtRole,
-        MutedRole
-    };
+  enum Role {
+    ConversationIdRole = Qt::UserRole + 1,
+    TitleRole,
+    TypeRole,
+    TypeLabelRole,
+    UnreadCountRole,
+    LastMessageAtRole,
+    MutedRole
+  };
 
-    explicit ConversationListModel(QObject *parent = nullptr);
+  explicit ConversationListModel(QObject *parent = nullptr);
 
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    QVariant data(const QModelIndex &index, int role) const override;
-    QHash<int, QByteArray> roleNames() const override;
+  int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+  QVariant data(const QModelIndex &index, int role) const override;
+  QHash<int, QByteArray> roleNames() const override;
 
-    void setConversations(QVector<domain::Conversation> conversations);
-    const QVector<domain::Conversation> &conversations() const;
+  void setConversations(QVector<domain::Conversation> conversations);
+  const QVector<domain::Conversation> &conversations() const;
 
 private:
-    QVector<domain::Conversation> m_conversations;
+  QVector<domain::Conversation> m_conversations;
 };
 
 } // namespace vox::ui::conversations

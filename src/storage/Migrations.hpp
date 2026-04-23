@@ -8,8 +8,8 @@ namespace vox::storage {
 
 class Migrations final {
 public:
-    static bool run(QSqlDatabase db, QString *error = nullptr);
-    static int currentVersion();
+  static bool run(QSqlDatabase db, QString *error = nullptr);
+  static int currentVersion();
 };
 
 } // namespace vox::storage

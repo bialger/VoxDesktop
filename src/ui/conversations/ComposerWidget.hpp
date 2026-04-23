@@ -8,17 +8,17 @@
 namespace vox::ui::conversations {
 
 class ComposerWidget final : public QWidget {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    explicit ComposerWidget(QWidget *parent = nullptr);
+  explicit ComposerWidget(QWidget *parent = nullptr);
 
 signals:
-    void sendRequested(const QString &text);
+  void sendRequested(const QString &text);
 
 private:
-    QPlainTextEdit *m_edit{nullptr};
-    QPushButton *m_sendButton{nullptr};
+  QPlainTextEdit *m_edit{nullptr};
+  QPushButton *m_sendButton{nullptr};
 };
 
 } // namespace vox::ui::conversations

@@ -7,16 +7,16 @@
 namespace vox::crypto {
 
 struct X3dhInput {
-    QByteArray ourIdentityPrivate;
-    QByteArray ourEphemeralPrivate;
-    QByteArray theirIdentityPublic;
-    QByteArray theirSignedPrekeyPublic;
-    std::optional<QByteArray> theirOneTimePrekeyPublic;
+  QByteArray ourIdentityPrivate;
+  QByteArray ourEphemeralPrivate;
+  QByteArray theirIdentityPublic;
+  QByteArray theirSignedPrekeyPublic;
+  std::optional<QByteArray> theirOneTimePrekeyPublic;
 };
 
 class X3dhSessionBuilder final {
 public:
-    static std::optional<QByteArray> buildInitialSharedSecret(const X3dhInput &input);
+  static std::optional<QByteArray> buildInitialSharedSecret(const X3dhInput &input);
 };
 
 } // namespace vox::crypto

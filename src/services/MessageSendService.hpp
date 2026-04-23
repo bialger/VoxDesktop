@@ -9,25 +9,25 @@ namespace vox::services {
 
 class MessageSendService final : public IMessageSendService {
 public:
-    MessageSendService(network::ConversationsApi &api,
-                       storage::IMessagesRepository &messagesRepository,
-                       storage::IJobsRepository &jobsRepository);
+  MessageSendService(network::ConversationsApi &api,
+                     storage::IMessagesRepository &messagesRepository,
+                     storage::IJobsRepository &jobsRepository);
 
-    bool sendCiphertext(const QString &conversationId,
-                        const QString &deviceId,
-                        const QString &ciphertext,
-                        int envelopeType = 0) override;
+  bool sendCiphertext(const QString &conversationId,
+                      const QString &deviceId,
+                      const QString &ciphertext,
+                      int envelopeType = 0) override;
 
-    bool sendMessage(const QString &conversationId,
-                     const QString &deviceId,
-                     const QString &plaintext,
-                     const QString &ciphertext,
-                     int envelopeType = 0);
+  bool sendMessage(const QString &conversationId,
+                   const QString &deviceId,
+                   const QString &plaintext,
+                   const QString &ciphertext,
+                   int envelopeType = 0);
 
 private:
-    network::ConversationsApi &m_api;
-    storage::IMessagesRepository &m_messagesRepository;
-    storage::IJobsRepository &m_jobsRepository;
+  network::ConversationsApi &m_api;
+  storage::IMessagesRepository &m_messagesRepository;
+  storage::IJobsRepository &m_jobsRepository;
 };
 
 } // namespace vox::services

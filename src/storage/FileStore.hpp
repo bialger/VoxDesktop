@@ -9,21 +9,21 @@ namespace vox::storage {
 
 class FileStore final {
 public:
-    explicit FileStore(QString rootPath);
+  explicit FileStore(QString rootPath);
 
-    bool initialize();
+  bool initialize();
 
-    QString encryptedAttachmentPath(const QString &attachmentId) const;
-    QString decryptedPreviewPath(const QString &attachmentId) const;
+  QString encryptedAttachmentPath(const QString &attachmentId) const;
+  QString decryptedPreviewPath(const QString &attachmentId) const;
 
-    bool writeEncryptedAttachment(const QString &attachmentId, QByteArrayView bytes);
-    std::optional<QByteArray> readEncryptedAttachment(const QString &attachmentId) const;
+  bool writeEncryptedAttachment(const QString &attachmentId, QByteArrayView bytes);
+  std::optional<QByteArray> readEncryptedAttachment(const QString &attachmentId) const;
 
-    bool writeDecryptedPreview(const QString &attachmentId, QByteArrayView bytes);
-    bool removeDecryptedPreview(const QString &attachmentId);
+  bool writeDecryptedPreview(const QString &attachmentId, QByteArrayView bytes);
+  bool removeDecryptedPreview(const QString &attachmentId);
 
 private:
-    QString m_rootPath;
+  QString m_rootPath;
 };
 
 } // namespace vox::storage

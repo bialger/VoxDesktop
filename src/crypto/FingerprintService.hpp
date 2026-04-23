@@ -9,7 +9,7 @@ namespace vox::crypto {
 
 class FingerprintService final {
 public:
-    static QString fingerprint(QByteArrayView signingPublicKey, QByteArrayView dhPublicKey);
+  static QString fingerprint(QByteArrayView signingPublicKey, QByteArrayView dhPublicKey);
 };
 
 } // namespace vox::crypto
