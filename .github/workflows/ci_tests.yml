@@ -49,12 +49,17 @@ jobs:
 
       - name: Run program
         shell: bash
-        working-directory: ./cmake-build-release/src
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
+              cd ./cmake-build-release/src
               ./vox-desktop.exe --help
           else 
-              ./vox-desktop --help
+              # Normalize path/name for CI: run from build output under bin/
+              cd ./cmake-build-release
+              mkdir -p ./bin
+              cp -f ./bin/vox-desktop ./bin/vox_desktop
+              chmod +x ./bin/vox_desktop
+              ./bin/vox_desktop --help
           fi
       - name: Build tests
         shell: bash
@@ -66,11 +71,17 @@ jobs:
           fi
       - name: Run tests
         shell: bash
-        working-directory: ./cmake-build-release
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
+              cd ./cmake-build-release
               ctest --output-on-failure || echo "Tests failed" # Due to a specific MinGW-related Github Actions issue
           else
+              cd ./cmake-build-release
+              # Run test binaries directly from ./tests (and also via ctest for reporting)
+              ./tests/vox_unit_tests
+              ./tests/vox_integration_tests
+              ./tests/vox_vector_tests
+              ./tests/vox_qt_tests
               ctest --output-on-failure
           fi
 
