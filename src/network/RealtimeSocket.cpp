@@ -7,6 +7,7 @@
 #include <algorithm>
 #ifdef VOX_HAS_QT_WEBSOCKETS
 #include <QNetworkRequest>
+#include <QtGlobal>
 #endif
 
 namespace vox::network {
@@ -18,10 +19,18 @@ RealtimeSocket::RealtimeSocket(QObject *parent) : QObject(parent) {
   connect(&m_socket, &QWebSocket::connected, this, &RealtimeSocket::onConnected);
   connect(&m_socket, &QWebSocket::textMessageReceived, this, &RealtimeSocket::onTextMessage);
   connect(&m_socket, &QWebSocket::disconnected, this, &RealtimeSocket::onDisconnected);
+  // Qt versions differ: some expose QWebSocket::error(), newer expose errorOccurred().
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
   connect(&m_socket,
           QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::errorOccurred),
           this,
           [this](QAbstractSocket::SocketError) { emit socketError(m_socket.errorString()); });
+#else
+  connect(&m_socket,
+          QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error),
+          this,
+          [this](QAbstractSocket::SocketError) { emit socketError(m_socket.errorString()); });
+#endif
 #endif
 
   connect(&m_reconnectTimer, &QTimer::timeout, this, [this]() {
