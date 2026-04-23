@@ -31,11 +31,24 @@ jobs:
 
       - uses: seanmiddleditch/gha-setup-ninja@master
 
-      - name: Install Qt dependencies for Linux
+      - name: Install Linux dependencies
         if: ${{ matrix.config.os == 'ubuntu-latest' }}
         run: |
           sudo apt update
-          sudo apt install libgl1-mesa-dev libglu1-mesa-dev
+          sudo apt install -y \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            qt6-base-dev qt6-base-dev-tools \
+            qt6-base-plugins \
+            qt6-tools-dev qt6-tools-dev-tools \
+            qt6-websockets-dev \
+            qt6-multimedia-dev \
+            libqt6svg6-dev \
+            # Qt xcb platform plugin runtime deps (headless CI via xvfb)
+            libxkbcommon-x11-0 libxcb-cursor0 \
+            libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
+            libxcb-xkb1 \
+            xvfb
 
       - name: Create CMake cache
         shell: bash
@@ -81,7 +94,11 @@ jobs:
               ./tests/vox_unit_tests
               ./tests/vox_integration_tests
               ./tests/vox_vector_tests
-              ./tests/vox_qt_tests
+              if [ "$RUNNER_OS" == "Linux" ]; then
+                  xvfb-run -a ./tests/vox_qt_tests
+              else
+                  ./tests/vox_qt_tests
+              fi
               ctest --output-on-failure
           fi
 
@@ -169,11 +186,21 @@ jobs:
           sudo apt-get update
           # Install a C++23-capable toolchain and clang-tidy-19 for better C++23 support
           sudo apt-get -y install clang-19 clang-tidy-19
-      - name: Install Qt dependencies for Linux
+      - name: Install Linux dependencies
         run: |
           sudo apt update
-          sudo apt install libgl1-mesa-dev libglu1-mesa-dev
-          sudo apt install qt6-base-dev
+          sudo apt install -y \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            qt6-base-dev qt6-base-dev-tools \
+            qt6-base-plugins \
+            qt6-tools-dev qt6-tools-dev-tools \
+            qt6-websockets-dev \
+            qt6-multimedia-dev \
+            libqt6svg6-dev \
+            libxkbcommon-x11-0 libxcb-cursor0 \
+            libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
+            libxcb-xkb1
 
       - name: Create CMake cache
         run: |
