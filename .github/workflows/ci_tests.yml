@@ -35,10 +35,12 @@ jobs:
         if: ${{ matrix.config.os == 'ubuntu-latest' }}
         run: |
           sudo apt update
+          # Qt6 platform plugins package name varies by Ubuntu image.
+          # Prefer qt6-qpa-plugins (provides xcb), fall back if runner changes.
+          sudo apt install -y qt6-qpa-plugins || sudo apt install -y qt6-base-plugins
           sudo apt install -y \
             libgl1-mesa-dev libglu1-mesa-dev \
             qt6-base-dev qt6-base-dev-tools \
-            qt6-base-plugins \
             qt6-tools-dev qt6-tools-dev-tools \
             qt6-websockets-dev \
             qt6-multimedia-dev \
@@ -189,10 +191,10 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt update
+          sudo apt install -y qt6-qpa-plugins || sudo apt install -y qt6-base-plugins
           sudo apt install -y \
             libgl1-mesa-dev libglu1-mesa-dev \
             qt6-base-dev qt6-base-dev-tools \
-            qt6-base-plugins \
             qt6-tools-dev qt6-tools-dev-tools \
             qt6-websockets-dev \
             qt6-multimedia-dev \
