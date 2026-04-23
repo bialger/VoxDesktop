@@ -39,18 +39,7 @@ jobs:
           # Prefer qt6-qpa-plugins (provides xcb), fall back if runner changes.
           sudo apt install -y qt6-qpa-plugins || sudo apt install -y qt6-base-plugins
           # Qt xcb platform plugin runtime deps (needed for headless CI via xvfb)
-          sudo apt install -y \
-            libgl1-mesa-dev libglu1-mesa-dev \
-            qt6-base-dev qt6-base-dev-tools \
-            qt6-tools-dev qt6-tools-dev-tools \
-            qt6-websockets-dev \
-            qt6-multimedia-dev \
-            libqt6svg6-dev \
-            libxkbcommon-x11-0 libxcb-cursor0 \
-            libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
-            libxcb-render-util0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
-            libxcb-xkb1 \
-            xvfb
+          sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools qt6-websockets-dev qt6-multimedia-dev libqt6svg6-dev libxkbcommon-x11-0 libxcb-cursor0 libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1 xvfb
 
       - name: Create CMake cache
         shell: bash
@@ -192,17 +181,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y qt6-qpa-plugins || sudo apt install -y qt6-base-plugins
-          sudo apt install -y \
-            libgl1-mesa-dev libglu1-mesa-dev \
-            qt6-base-dev qt6-base-dev-tools \
-            qt6-tools-dev qt6-tools-dev-tools \
-            qt6-websockets-dev \
-            qt6-multimedia-dev \
-            libqt6svg6-dev \
-            libxkbcommon-x11-0 libxcb-cursor0 \
-            libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
-            libxcb-render-util0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
-            libxcb-xkb1
+          sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools qt6-websockets-dev qt6-multimedia-dev libqt6svg6-dev libxkbcommon-x11-0 libxcb-cursor0 libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1
 
       - name: Create CMake cache
         run: |
