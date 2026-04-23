@@ -1,45 +1,53 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(
-        QtCMake
-        VERSION 1.1.0
-        DESCRIPTION "CMake project for easy Qt connection to other CMake projects"
-        LANGUAGES CXX
+    VoxDesktop
+    VERSION 0.1.0
+    DESCRIPTION "Vox secure desktop messenger client"
+    LANGUAGES CXX
 )
 
 set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+option(VOX_ENABLE_CONTRACT_TESTS "Build real backend contract tests" OFF)
 
-message(STATUS "Building ${PROJECT_DESCRIPTION} ${PROJECT_NAME}, version ${PROJECT_VERSION}")
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
 
-if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
-endif ()
+include(FetchContent)
 
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-
-if (WIN32)
-    set(USER_HOME_DIRECTORY $ENV{USERPROFILE})
-else ()
-    set(USER_HOME_DIRECTORY $ENV{HOME})
-endif ()
-
-message(STATUS "User home directory: ${USER_HOME_DIRECTORY}")
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    set(CMAKE_CXX_FLAGS_DEBUG "/MDd")
-    set(CMAKE_CXX_FLAGS_RELEASE "/O2")
-else ()
-    set(CMAKE_CXX_FLAGS_DEBUG "-g")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-    if (WIN32)
-        set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ -lwsock32 -lws2_32 ${CMAKE_CXX_STANDARD_LIBRARIES}")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive")
-    endif ()
-endif ()
+FetchContent_Declare(
+    Sodium
+    GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+    GIT_SUBMODULES_RECURSE TRUE
+)
+set(SODIUM_DISABLE_TESTS ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(Sodium)
 
 add_subdirectory(lib)
 
-if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-    add_subdirectory(bin)
+if(DEFINED ENV{QTDIR} AND NOT DEFINED Qt6_DIR)
+    set(Qt6_DIR "$ENV{QTDIR}/lib/cmake/Qt6" CACHE PATH "Path to Qt6Config.cmake")
+endif()
+
+if(NOT TARGET Qt6::Core)
+    find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network Sql Concurrent Test WebSockets)
+endif()
+
+find_package(Qt6 REQUIRED COMPONENTS Network Sql Concurrent Test WebSockets)
+find_package(Qt6 QUIET COMPONENTS Multimedia Svg)
+
+qt_standard_project_setup()
+
+add_subdirectory(src)
+add_subdirectory(bin)
+
+include(CTest)
+if(BUILD_TESTING)
     add_subdirectory(tests)
-endif ()
+endif()

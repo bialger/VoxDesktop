@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="vox_logo.png">vox_logo.png</file>
+  </qresource>
+</RCC>
