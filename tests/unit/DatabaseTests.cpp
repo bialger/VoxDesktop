@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <QSqlDatabase>
+#include <QStringList>
 
 #include "storage/Database.hpp"
 #include "storage/Migrations.hpp"
