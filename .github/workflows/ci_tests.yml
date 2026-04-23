@@ -45,33 +45,33 @@ jobs:
       - name: Build main target
         shell: bash
         run: |
-          cmake --build cmake-build-release --target QtCMake
+          cmake --build cmake-build-release --target vox-desktop
 
       - name: Run program
         shell: bash
-        working-directory: ./cmake-build-release/bin
+        working-directory: ./cmake-build-release/src
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-              ./QtCMake.exe --help
+              ./vox-desktop.exe --help
           else 
-              ./QtCMake --help
+              ./vox-desktop --help
           fi
       - name: Build tests
         shell: bash
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-              cmake --build ./cmake-build-release --target QtCMake_tests || echo "Built with errors"
+              cmake --build ./cmake-build-release --target vox_unit_tests vox_integration_tests vox_vector_tests vox_qt_tests || echo "Built with errors"
           else
-              cmake --build ./cmake-build-release --target QtCMake_tests
+              cmake --build ./cmake-build-release --target vox_unit_tests vox_integration_tests vox_vector_tests vox_qt_tests
           fi
       - name: Run tests
         shell: bash
-        working-directory: ./cmake-build-release/tests
+        working-directory: ./cmake-build-release
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-              ./QtCMake_tests.exe || echo "Tests failed" # Due to a specific MinGW-related Github Actions issue
+              ctest --output-on-failure || echo "Tests failed" # Due to a specific MinGW-related Github Actions issue
           else
-              ./QtCMake_tests
+              ctest --output-on-failure
           fi
 
   style-check:
