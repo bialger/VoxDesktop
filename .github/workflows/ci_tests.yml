@@ -55,7 +55,15 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-              cd ./cmake-build-release/src
+              cd ./cmake-build-release
+              # Run from build dir (normalize output location if needed)
+              if [ ! -f ./vox-desktop.exe ]; then
+                  if [ -f ./bin/vox-desktop.exe ]; then
+                      cp -f ./bin/vox-desktop.exe ./vox-desktop.exe
+                  elif [ -f ./src/vox-desktop.exe ]; then
+                      cp -f ./src/vox-desktop.exe ./vox-desktop.exe
+                  fi
+              fi
               ./vox-desktop.exe --help
           else 
               # Normalize path/name for CI: run from build output under bin/
@@ -81,16 +89,13 @@ jobs:
               ctest --output-on-failure || echo "Tests failed" # Due to a specific MinGW-related Github Actions issue
           else
               cd ./cmake-build-release
-              # Run test binaries directly from ./tests (and also via ctest for reporting)
-              ./tests/vox_unit_tests
-              ./tests/vox_integration_tests
-              ./tests/vox_vector_tests
+              # Use ctest for discovery/reporting; on Linux run Qt-labeled tests under Xvfb.
               if [ "$RUNNER_OS" == "Linux" ]; then
-                  xvfb-run -a ./tests/vox_qt_tests
+                  ctest -LE qt --output-on-failure
+                  xvfb-run -a ctest -L qt --output-on-failure
               else
-                  ./tests/vox_qt_tests
+                  ctest --output-on-failure
               fi
-              ctest --output-on-failure
           fi
 
   style-check:
