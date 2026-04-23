@@ -38,6 +38,7 @@ jobs:
           # Qt6 platform plugins package name varies by Ubuntu image.
           # Prefer qt6-qpa-plugins (provides xcb), fall back if runner changes.
           sudo apt install -y qt6-qpa-plugins || sudo apt install -y qt6-base-plugins
+          # Qt xcb platform plugin runtime deps (needed for headless CI via xvfb)
           sudo apt install -y \
             libgl1-mesa-dev libglu1-mesa-dev \
             qt6-base-dev qt6-base-dev-tools \
@@ -45,7 +46,6 @@ jobs:
             qt6-websockets-dev \
             qt6-multimedia-dev \
             libqt6svg6-dev \
-            # Qt xcb platform plugin runtime deps (headless CI via xvfb)
             libxkbcommon-x11-0 libxcb-cursor0 \
             libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
             libxcb-render-util0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
