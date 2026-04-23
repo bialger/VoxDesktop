@@ -1,4 +1,4 @@
-#include "ProjectIntegrationTestSuite.hpp"
+#include "ProjectUnitTestSuite.hpp"
 
 #include <chrono>
 #include <string>
@@ -13,7 +13,7 @@ void ensureQtCoreApplication() {
     }
 
     static int argc = 1;
-    static char appName[] = "vox-integration-tests";
+    static char appName[] = "vox-unit-tests";
     static char *argv[] = {appName, nullptr};
     static QCoreApplication *app = new QCoreApplication(argc, argv);
     (void)app;
@@ -21,16 +21,16 @@ void ensureQtCoreApplication() {
 
 } // namespace
 
-void ProjectIntegrationTestSuite::SetUp() {
+void ProjectUnitTestSuite::SetUp() {
     ensureQtCoreApplication();
 
     const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
     temporaryDirectory = std::filesystem::temp_directory_path() /
-                         std::filesystem::path("vox_integration_" + std::to_string(stamp));
+                         std::filesystem::path("vox_unit_" + std::to_string(stamp));
     std::filesystem::create_directories(temporaryDirectory);
 }
 
-void ProjectIntegrationTestSuite::TearDown() {
+void ProjectUnitTestSuite::TearDown() {
     std::error_code ec;
     std::filesystem::remove_all(temporaryDirectory, ec);
 }

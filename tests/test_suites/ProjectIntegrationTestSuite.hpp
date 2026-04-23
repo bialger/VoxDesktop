@@ -1,5 +1,5 @@
-#ifndef PROJECTINTEGRATIONUNITTESTSUITE_HPP
-#define PROJECTINTEGRATIONUNITTESTSUITE_HPP
+#ifndef VOX_TESTS_PROJECTINTEGRATIONTESTSUITE_HPP
+#define VOX_TESTS_PROJECTINTEGRATIONTESTSUITE_HPP
 
 #include <filesystem>
 
@@ -7,10 +7,10 @@
 
 class ProjectIntegrationTestSuite : public testing::Test {
 protected:
-  static const std::filesystem::path kTemporaryDirectoryName;
+    std::filesystem::path temporaryDirectory;
 
-  void SetUp() override;
-  void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
-#endif // PROJECTINTEGRATIONUNITTESTSUITE_HPP
+#endif // VOX_TESTS_PROJECTINTEGRATIONTESTSUITE_HPP
