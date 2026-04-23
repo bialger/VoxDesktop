@@ -66,7 +66,6 @@ function(vox_build_qtbase)
         -nomake examples
         -nomake tests
         -prefix "${QT_BUILD_DIR}"
-        -sql-sqlite
     )
 
     message(STATUS "Configuring Qt base at ${QT_BUILD_DIR}")
