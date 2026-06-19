@@ -13,7 +13,7 @@ bool prepareAndBind(QSqlQuery &query, const QString &statement, const QList<QVar
   return true;
 }
 
-bool tableExists(QSqlDatabase db, const QString &tableName) {
+bool tableExists(const QSqlDatabase &db, const QString &tableName) {
   return db.tables().contains(tableName);
 }
 

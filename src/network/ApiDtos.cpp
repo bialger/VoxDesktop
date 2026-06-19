@@ -5,7 +5,7 @@
 namespace vox::network {
 namespace {
 
-std::optional<QString> getString(const QJsonObject &obj, const char *field) {
+std::optional<QString> GetString(const QJsonObject &obj, const char *field) {
   const auto value = obj.value(field);
   if (!value.isString()) {
     return std::nullopt;
@@ -13,7 +13,7 @@ std::optional<QString> getString(const QJsonObject &obj, const char *field) {
   return value.toString();
 }
 
-std::optional<qint64> getInteger(const QJsonObject &obj, const char *field) {
+std::optional<qint64> GetInteger(const QJsonObject &obj, const char *field) {
   const auto value = obj.value(field);
   if (!value.isDouble()) {
     return std::nullopt;
@@ -127,106 +127,109 @@ QJsonObject toJson(const SyncRecordDto &dto) {
 }
 
 std::optional<ApiError> parseApiError(const QJsonObject &obj) {
-  const auto errorObj = obj.value("error").toObject();
-  if (errorObj.isEmpty()) {
+  const auto error_obj = obj.value("error").toObject();
+  if (error_obj.isEmpty()) {
     return std::nullopt;
   }
 
-  const auto codeValue = errorObj.value("code");
-  const auto msgValue = errorObj.value("message");
-  if (!codeValue.isDouble() || !msgValue.isString()) {
+  const auto code_value = error_obj.value("code");
+  const auto msg_value = error_obj.value("message");
+  if (!code_value.isDouble() || !msg_value.isString()) {
     return std::nullopt;
   }
 
-  return ApiError{codeValue.toInt(), msgValue.toString()};
+  return ApiError{code_value.toInt(), msg_value.toString()};
 }
 
 std::optional<AuthSessionResponse> parseAuthSessionResponse(const QJsonObject &obj) {
-  const auto userId = getString(obj, "user_id");
-  const auto accessToken = getString(obj, "access_token");
-  const auto refreshToken = getString(obj, "refresh_token");
-  const auto deviceStatus = getString(obj, "device_status");
+  const auto user_id = GetString(obj, "user_id");
+  const auto access_token = GetString(obj, "access_token");
+  const auto refresh_token = GetString(obj, "refresh_token");
+  const auto device_status = GetString(obj, "device_status");
 
-  if (!userId.has_value() || !accessToken.has_value() || !refreshToken.has_value() || !deviceStatus.has_value()) {
+  if (!user_id.has_value() || !access_token.has_value() || !refresh_token.has_value() || !device_status.has_value()) {
     return std::nullopt;
   }
 
   return AuthSessionResponse{
-      *userId, *accessToken, *refreshToken, *deviceStatus, obj.value("sync_key_version").toInt()};
+      *user_id, *access_token, *refresh_token, *device_status, obj.value("sync_key_version").toInt()};
 }
 
 std::optional<RefreshResponse> parseRefreshResponse(const QJsonObject &obj) {
-  const auto accessToken = getString(obj, "access_token");
-  const auto refreshToken = getString(obj, "refresh_token");
-  if (!accessToken.has_value() || !refreshToken.has_value()) {
+  const auto access_token = GetString(obj, "access_token");
+  const auto refresh_token = GetString(obj, "refresh_token");
+  if (!access_token.has_value() || !refresh_token.has_value()) {
     return std::nullopt;
   }
 
-  return RefreshResponse{*accessToken, *refreshToken};
+  return RefreshResponse{*access_token, *refresh_token};
 }
 
 std::optional<MeResponse> parseMeResponse(const QJsonObject &obj) {
-  const auto userId = getString(obj, "user_id");
-  const auto username = getString(obj, "username");
-  const auto currentDevice = getString(obj, "current_device_id");
-  if (!userId.has_value() || !username.has_value() || !currentDevice.has_value()) {
+  const auto user_id = GetString(obj, "user_id");
+  const auto username = GetString(obj, "username");
+  const auto current_device = GetString(obj, "current_device_id");
+  if (!user_id.has_value() || !username.has_value() || !current_device.has_value()) {
     return std::nullopt;
   }
 
-  return MeResponse{*userId, *username, *currentDevice, obj.value("sync_key_version").toInt()};
+  return MeResponse{*user_id, *username, *current_device, obj.value("sync_key_version").toInt()};
 }
 
 std::optional<DirectoryUser> parseDirectoryUser(const QJsonObject &obj) {
-  const auto userId = getString(obj, "user_id");
-  const auto username = getString(obj, "username");
-  if (!userId.has_value() || !username.has_value()) {
+  const auto user_id = GetString(obj, "user_id");
+  const auto username = GetString(obj, "username");
+  if (!user_id.has_value() || !username.has_value()) {
     return std::nullopt;
   }
 
-  return DirectoryUser{*userId, *username};
+  return DirectoryUser{*user_id, *username};
 }
 
 std::optional<DeviceDirectoryEntry> parseDeviceDirectoryEntry(const QJsonObject &obj) {
-  const auto deviceId = getString(obj, "device_id");
-  const auto identityKeyPublic = getString(obj, "identity_key_public");
-  const auto signedPrekeyPublic = getString(obj, "signed_prekey_public");
-  const auto signedPrekeySignature = getString(obj, "signed_prekey_signature");
+  const auto device_id = GetString(obj, "device_id");
+  const auto identity_key_public = GetString(obj, "identity_key_public");
+  const auto signed_prekey_public = GetString(obj, "signed_prekey_public");
+  const auto signed_prekey_signature = GetString(obj, "signed_prekey_signature");
 
-  if (!deviceId.has_value() || !identityKeyPublic.has_value() || !signedPrekeyPublic.has_value() ||
-      !signedPrekeySignature.has_value()) {
+  if (!device_id.has_value() || !identity_key_public.has_value() || !signed_prekey_public.has_value() ||
+      !signed_prekey_signature.has_value()) {
     return std::nullopt;
   }
 
-  return DeviceDirectoryEntry{
-      *deviceId, obj.value("device_label").toString(), *identityKeyPublic, *signedPrekeyPublic, *signedPrekeySignature};
+  return DeviceDirectoryEntry{*device_id,
+                              obj.value("device_label").toString(),
+                              *identity_key_public,
+                              *signed_prekey_public,
+                              *signed_prekey_signature};
 }
 
 std::optional<ConversationCreateResponse> parseConversationCreateResponse(const QJsonObject &obj) {
-  const auto conversationId = getString(obj, "conversation_id");
-  if (!conversationId.has_value()) {
+  const auto conversation_id = GetString(obj, "conversation_id");
+  if (!conversation_id.has_value()) {
     return std::nullopt;
   }
-  return ConversationCreateResponse{*conversationId};
+  return ConversationCreateResponse{*conversation_id};
 }
 
 std::optional<ConversationSummaryDto> parseConversationSummaryDto(const QJsonObject &obj) {
-  const auto conversationId = getString(obj, "conversation_id");
-  const auto createdBy = getString(obj, "created_by");
-  const auto createdAt = getInteger(obj, "created_at");
-  const auto membershipVersion = obj.value("membership_version");
+  const auto conversation_id = GetString(obj, "conversation_id");
+  const auto created_by = GetString(obj, "created_by");
+  const auto created_at = GetInteger(obj, "created_at");
+  const auto membership_version = obj.value("membership_version");
 
-  if (!conversationId.has_value() || !createdBy.has_value() || !createdAt.has_value() ||
-      !membershipVersion.isDouble()) {
+  if (!conversation_id.has_value() || !created_by.has_value() || !created_at.has_value() ||
+      !membership_version.isDouble()) {
     return std::nullopt;
   }
 
   ConversationSummaryDto dto;
-  dto.conversationId = *conversationId;
+  dto.conversationId = *conversation_id;
   dto.type = obj.value("type").toInt();
-  dto.createdBy = *createdBy;
+  dto.createdBy = *created_by;
   dto.createdByUsername = obj.value("created_by_username").toString();
-  dto.createdAt = *createdAt;
-  dto.membershipVersion = membershipVersion.toInt();
+  dto.createdAt = *created_at;
+  dto.membershipVersion = membership_version.toInt();
   dto.myRole = obj.value("my_role").toString();
   dto.title = obj.value("title").toString();
   dto.channelPostPolicy = obj.value("channel_post_policy").toString();
@@ -237,27 +240,27 @@ std::optional<ConversationSummaryDto> parseConversationSummaryDto(const QJsonObj
 }
 
 std::optional<ConversationMemberDto> parseConversationMemberDto(const QJsonObject &obj) {
-  const auto userId = getString(obj, "user_id");
-  if (!userId.has_value()) {
+  const auto user_id = GetString(obj, "user_id");
+  if (!user_id.has_value()) {
     return std::nullopt;
   }
 
-  return ConversationMemberDto{*userId, obj.value("username").toString(), obj.value("role").toString()};
+  return ConversationMemberDto{*user_id, obj.value("username").toString(), obj.value("role").toString()};
 }
 
 std::optional<ConversationMembersResponseDto> parseConversationMembersResponseDto(const QJsonObject &obj) {
-  const auto conversationId = getString(obj, "conversation_id");
-  if (!conversationId.has_value()) {
+  const auto conversation_id = GetString(obj, "conversation_id");
+  if (!conversation_id.has_value()) {
     return std::nullopt;
   }
 
   ConversationMembersResponseDto dto;
-  dto.conversationId = *conversationId;
+  dto.conversationId = *conversation_id;
   dto.membershipVersion = obj.value("membership_version").toInt();
   dto.subscriptionState = obj.value("subscription_state").toString();
   dto.memberCount = obj.value("member_count").toInt();
 
-  const auto pushEntries = [](const QJsonArray &array, QVector<ConversationMemberDto> &target) -> bool {
+  const auto push_entries = [](const QJsonArray &array, QVector<ConversationMemberDto> &target) -> bool {
     for (const auto &entry : array) {
       const auto parsed = parseConversationMemberDto(entry.toObject());
       if (!parsed.has_value()) {
@@ -268,9 +271,9 @@ std::optional<ConversationMembersResponseDto> parseConversationMembersResponseDt
     return true;
   };
 
-  if (!pushEntries(obj.value("members").toArray(), dto.members) ||
-      !pushEntries(obj.value("admins").toArray(), dto.admins) ||
-      !pushEntries(obj.value("subscribers").toArray(), dto.subscribers)) {
+  if (!push_entries(obj.value("members").toArray(), dto.members) ||
+      !push_entries(obj.value("admins").toArray(), dto.admins) ||
+      !push_entries(obj.value("subscribers").toArray(), dto.subscribers)) {
     return std::nullopt;
   }
 
@@ -278,35 +281,35 @@ std::optional<ConversationMembersResponseDto> parseConversationMembersResponseDt
 }
 
 std::optional<SendEnvelopeResponse> parseSendEnvelopeResponse(const QJsonObject &obj) {
-  const auto envelopeId = getString(obj, "envelope_id");
-  const auto serverTimestamp = getInteger(obj, "server_timestamp");
-  if (!envelopeId.has_value() || !serverTimestamp.has_value()) {
+  const auto envelope_id = GetString(obj, "envelope_id");
+  const auto server_timestamp = GetInteger(obj, "server_timestamp");
+  if (!envelope_id.has_value() || !server_timestamp.has_value()) {
     return std::nullopt;
   }
 
-  return SendEnvelopeResponse{*envelopeId, *serverTimestamp, obj.value("delivered_to_count").toInt()};
+  return SendEnvelopeResponse{*envelope_id, *server_timestamp, obj.value("delivered_to_count").toInt()};
 }
 
 std::optional<EnvelopeDto> parseEnvelopeDto(const QJsonObject &obj) {
-  const auto envelopeId = getString(obj, "envelope_id");
-  const auto conversationId = getString(obj, "conversation_id");
-  const auto senderUserId = getString(obj, "sender_user_id");
-  const auto senderDeviceId = getString(obj, "sender_device_id");
-  const auto ciphertext = getString(obj, "ciphertext");
-  const auto serverTimestamp = getInteger(obj, "server_timestamp");
+  const auto envelope_id = GetString(obj, "envelope_id");
+  const auto conversation_id = GetString(obj, "conversation_id");
+  const auto sender_user_id = GetString(obj, "sender_user_id");
+  const auto sender_device_id = GetString(obj, "sender_device_id");
+  const auto ciphertext = GetString(obj, "ciphertext");
+  const auto server_timestamp = GetInteger(obj, "server_timestamp");
 
-  if (!envelopeId.has_value() || !conversationId.has_value() || !senderUserId.has_value() ||
-      !senderDeviceId.has_value() || !ciphertext.has_value() || !serverTimestamp.has_value()) {
+  if (!envelope_id.has_value() || !conversation_id.has_value() || !sender_user_id.has_value() ||
+      !sender_device_id.has_value() || !ciphertext.has_value() || !server_timestamp.has_value()) {
     return std::nullopt;
   }
 
   EnvelopeDto dto;
-  dto.envelopeId = *envelopeId;
-  dto.conversationId = *conversationId;
-  dto.senderUserId = *senderUserId;
-  dto.senderDeviceId = *senderDeviceId;
+  dto.envelopeId = *envelope_id;
+  dto.conversationId = *conversation_id;
+  dto.senderUserId = *sender_user_id;
+  dto.senderDeviceId = *sender_device_id;
   dto.ciphertext = *ciphertext;
-  dto.serverTimestamp = *serverTimestamp;
+  dto.serverTimestamp = *server_timestamp;
   dto.envelopeType = obj.value("envelope_type").toInt();
   if (obj.contains("ordering_epoch") && obj.value("ordering_epoch").isDouble()) {
     dto.orderingEpoch = obj.value("ordering_epoch").toInt();
@@ -333,36 +336,36 @@ std::optional<EnvelopeBatchResponse> parseEnvelopeBatchResponse(const QJsonObjec
 }
 
 std::optional<AttachmentUploadInitResponse> parseAttachmentUploadInitResponse(const QJsonObject &obj) {
-  const auto attachmentId = getString(obj, "attachment_id");
-  const auto blobPath = getString(obj, "blob_path");
-  if (!attachmentId.has_value() || !blobPath.has_value()) {
+  const auto attachment_id = GetString(obj, "attachment_id");
+  const auto blob_path = GetString(obj, "blob_path");
+  if (!attachment_id.has_value() || !blob_path.has_value()) {
     return std::nullopt;
   }
 
-  return AttachmentUploadInitResponse{*attachmentId, *blobPath};
+  return AttachmentUploadInitResponse{*attachment_id, *blob_path};
 }
 
 std::optional<SyncRecordDto> parseSyncRecordDto(const QJsonObject &obj) {
-  const auto collection = getString(obj, "collection");
-  const auto recordId = getString(obj, "record_id");
-  const auto ciphertext = getString(obj, "ciphertext");
-  if (!collection.has_value() || !recordId.has_value() || !ciphertext.has_value()) {
+  const auto collection = GetString(obj, "collection");
+  const auto record_id = GetString(obj, "record_id");
+  const auto ciphertext = GetString(obj, "ciphertext");
+  if (!collection.has_value() || !record_id.has_value() || !ciphertext.has_value()) {
     return std::nullopt;
   }
 
   return SyncRecordDto{
-      *collection, *recordId, obj.value("version").toInt(), *ciphertext, obj.value("deleted").toBool(false)};
+      *collection, *record_id, obj.value("version").toInt(), *ciphertext, obj.value("deleted").toBool(false)};
 }
 
 std::optional<SyncKeyBundleDto> parseSyncKeyBundleDto(const QJsonObject &obj) {
-  const auto wrappedSyncKey = getString(obj, "wrapped_sync_key");
-  const auto syncWrapSalt = getString(obj, "sync_wrap_salt");
-  if (!wrappedSyncKey.has_value() || !syncWrapSalt.has_value()) {
+  const auto wrapped_sync_key = GetString(obj, "wrapped_sync_key");
+  const auto sync_wrap_salt = GetString(obj, "sync_wrap_salt");
+  if (!wrapped_sync_key.has_value() || !sync_wrap_salt.has_value()) {
     return std::nullopt;
   }
 
   return SyncKeyBundleDto{
-      obj.value("version").toInt(), *wrappedSyncKey, *syncWrapSalt, obj.value("sync_wrap_params").toObject()};
+      obj.value("version").toInt(), *wrapped_sync_key, *sync_wrap_salt, obj.value("sync_wrap_params").toObject()};
 }
 
 } // namespace vox::network

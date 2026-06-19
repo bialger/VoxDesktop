@@ -8,7 +8,7 @@
 namespace vox::storage::SqlHelpers {
 
 bool prepareAndBind(QSqlQuery &query, const QString &statement, const QList<QVariant> &bindValues);
-bool tableExists(QSqlDatabase db, const QString &tableName);
+bool tableExists(const QSqlDatabase &db, const QString &tableName);
 
 } // namespace vox::storage::SqlHelpers
 

@@ -5,24 +5,33 @@
 #include <QGroupBox>
 #include <QVBoxLayout>
 
+#include <memory>
+
 namespace vox::ui::settings {
 
 SettingsPage::SettingsPage(QWidget *parent) : QWidget(parent) {
-  auto *layout = new QVBoxLayout(this);
+  auto layout = std::make_unique<QVBoxLayout>();
 
-  auto *privacyGroup = new QGroupBox("Privacy", this);
-  auto *privacyLayout = new QFormLayout(privacyGroup);
-  privacyLayout->addRow("Hide notification previews", new QCheckBox(privacyGroup));
-  privacyLayout->addRow("Minimize to tray", new QCheckBox(privacyGroup));
+  auto *privacy_group = new QGroupBox("Privacy", this);
+  auto privacy_layout = std::make_unique<QFormLayout>();
+  auto hide_previews = std::make_unique<QCheckBox>(privacy_group);
+  auto minimize_to_tray = std::make_unique<QCheckBox>(privacy_group);
+  privacy_layout->addRow("Hide notification previews", hide_previews.release());
+  privacy_layout->addRow("Minimize to tray", minimize_to_tray.release());
+  privacy_group->setLayout(privacy_layout.release());
 
-  auto *securityGroup = new QGroupBox("Security", this);
-  auto *securityLayout = new QFormLayout(securityGroup);
-  securityLayout->addRow("Require unlock on start", new QCheckBox(securityGroup));
-  securityLayout->addRow("Lock when minimized", new QCheckBox(securityGroup));
+  auto *security_group = new QGroupBox("Security", this);
+  auto security_layout = std::make_unique<QFormLayout>();
+  auto require_unlock = std::make_unique<QCheckBox>(security_group);
+  auto lock_when_minimized = std::make_unique<QCheckBox>(security_group);
+  security_layout->addRow("Require unlock on start", require_unlock.release());
+  security_layout->addRow("Lock when minimized", lock_when_minimized.release());
+  security_group->setLayout(security_layout.release());
 
-  layout->addWidget(privacyGroup);
-  layout->addWidget(securityGroup);
+  layout->addWidget(privacy_group);
+  layout->addWidget(security_group);
   layout->addStretch(1);
+  setLayout(layout.release());
 }
 
 } // namespace vox::ui::settings

@@ -5,23 +5,28 @@
 #include <QStatusBar>
 
 namespace vox::ui::shell {
+namespace {
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+constexpr int kDefaultWindowWidthPx = 1360;
+constexpr int kDefaultWindowHeightPx = 840;
+
+} // namespace
+
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_stack(new AppStack(this)) {
   setWindowTitle("Vox Desktop");
-  resize(1360, 840);
+  resize(kDefaultWindowWidthPx, kDefaultWindowHeightPx);
 
-  m_stack = new AppStack(this);
   setCentralWidget(m_stack);
 
-  auto *sessionMenu = menuBar()->addMenu("Session");
-  auto *showWelcomeAction = sessionMenu->addAction("Show Welcome");
-  auto *showMainAction = sessionMenu->addAction("Show Main");
-  sessionMenu->addSeparator();
-  auto *logoutAction = sessionMenu->addAction("Logout");
+  auto *session_menu = menuBar()->addMenu("Session");
+  auto *show_welcome_action = session_menu->addAction("Show Welcome");
+  auto *show_main_action = session_menu->addAction("Show Main");
+  session_menu->addSeparator();
+  auto *logout_action = session_menu->addAction("Logout");
 
-  connect(showWelcomeAction, &QAction::triggered, m_stack, &AppStack::showWelcome);
-  connect(showMainAction, &QAction::triggered, m_stack, &AppStack::showMain);
-  connect(logoutAction, &QAction::triggered, this, &MainWindow::logoutRequested);
+  connect(show_welcome_action, &QAction::triggered, m_stack, &AppStack::showWelcome);
+  connect(show_main_action, &QAction::triggered, m_stack, &AppStack::showMain);
+  connect(logout_action, &QAction::triggered, this, &MainWindow::logoutRequested);
 
   connect(m_stack->welcomePage(), &auth::WelcomePage::serverBaseUrlReady, this, &MainWindow::serverBaseUrlReady);
   connect(m_stack->welcomePage(), &auth::WelcomePage::loginRequested, m_stack, &AppStack::showLogin);

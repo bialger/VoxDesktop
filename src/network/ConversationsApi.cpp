@@ -41,8 +41,8 @@ ApiResult<QVector<ConversationSummaryDto>> ConversationsApi::listConversations()
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -66,8 +66,8 @@ ApiResult<ConversationSummaryDto> ConversationsApi::conversation(const QString &
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -91,8 +91,8 @@ ApiResult<ConversationMembersResponseDto> ConversationsApi::members(const QStrin
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -117,8 +117,8 @@ ApiResult<ConversationCreateResponse> ConversationsApi::createConversation(
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -167,8 +167,8 @@ ApiResult<SendEnvelopeResponse> ConversationsApi::sendEnvelope(const SendEnvelop
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -205,8 +205,8 @@ ApiResult<EnvelopeBatchResponse> ConversationsApi::pendingEnvelopes(int limit, c
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -241,8 +241,8 @@ ApiResult<EnvelopeBatchResponse> ConversationsApi::conversationEnvelopes(const Q
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -257,9 +257,9 @@ VoidResult ConversationsApi::parseVoid(const NetworkResponse &response) const {
 
   const auto object = JsonCodec::parseObject(response.body, &result.error);
   if (object.has_value()) {
-    const auto apiError = parseApiError(*object);
-    if (apiError.has_value()) {
-      result.error = apiError->message;
+    const auto api_error = parseApiError(*object);
+    if (api_error.has_value()) {
+      result.error = api_error->message;
     }
   }
   if (result.error.isEmpty()) {

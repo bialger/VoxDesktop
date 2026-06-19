@@ -83,7 +83,7 @@ public:
 
 class SqlAccountsRepository final : public IAccountsRepository {
 public:
-  explicit SqlAccountsRepository(QSqlDatabase db);
+  explicit SqlAccountsRepository(const QSqlDatabase &db);
 
   bool upsertAccount(const domain::Account &account) override;
   std::optional<domain::Account> activeAccount() const override;
@@ -95,7 +95,7 @@ private:
 
 class SqlConversationsRepository final : public IConversationsRepository {
 public:
-  explicit SqlConversationsRepository(QSqlDatabase db);
+  explicit SqlConversationsRepository(const QSqlDatabase &db);
 
   bool upsertConversation(const domain::Conversation &conversation) override;
   QVector<domain::Conversation> listConversations() const override;
@@ -106,7 +106,7 @@ private:
 
 class SqlMessagesRepository final : public IMessagesRepository {
 public:
-  explicit SqlMessagesRepository(QSqlDatabase db);
+  explicit SqlMessagesRepository(const QSqlDatabase &db);
 
   bool upsertMessage(const domain::Message &message) override;
   QVector<domain::Message> listConversationMessages(const QString &conversationId, int limit) const override;
@@ -117,7 +117,7 @@ private:
 
 class SqlDevicesRepository final : public IDevicesRepository {
 public:
-  explicit SqlDevicesRepository(QSqlDatabase db);
+  explicit SqlDevicesRepository(const QSqlDatabase &db);
 
   bool upsertDevice(const domain::Device &device) override;
   QVector<domain::Device> listDevicesByUser(const QString &userId) const override;
@@ -128,7 +128,7 @@ private:
 
 class SqlSyncRepository final : public ISyncRepository {
 public:
-  explicit SqlSyncRepository(QSqlDatabase db);
+  explicit SqlSyncRepository(const QSqlDatabase &db);
 
   bool upsertRecord(const domain::SyncRecord &record) override;
   QVector<domain::SyncRecord> listRecords(const QString &collection) const override;
@@ -139,7 +139,7 @@ private:
 
 class SqlJobsRepository final : public IJobsRepository {
 public:
-  explicit SqlJobsRepository(QSqlDatabase db);
+  explicit SqlJobsRepository(const QSqlDatabase &db);
 
   bool enqueueJob(const QString &type, QByteArray payloadCiphertext, qint64 nextAttemptMs) override;
   QVector<JobRecord> dueJobs(qint64 nowMs) const override;
@@ -151,7 +151,7 @@ private:
 
 class SqlSearchRepository final : public ISearchRepository {
 public:
-  explicit SqlSearchRepository(QSqlDatabase db);
+  explicit SqlSearchRepository(const QSqlDatabase &db);
 
   bool insertToken(const QString &conversationId,
                    const QString &messageId,
@@ -165,7 +165,7 @@ private:
 
 class SqlTrustRepository final : public ITrustRepository {
 public:
-  explicit SqlTrustRepository(QSqlDatabase db);
+  explicit SqlTrustRepository(const QSqlDatabase &db);
 
   bool upsertTrust(const domain::DeviceFingerprint &trust) override;
   std::optional<domain::DeviceFingerprint> findTrust(const QString &deviceId) const override;

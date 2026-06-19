@@ -6,11 +6,11 @@
 namespace vox::network {
 
 std::optional<QJsonObject> JsonCodec::parseObject(QByteArrayView bytes, QString *error) {
-  QJsonParseError parseError;
-  const auto doc = QJsonDocument::fromJson(bytes.toByteArray(), &parseError);
-  if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+  QJsonParseError parse_error;
+  const auto doc = QJsonDocument::fromJson(bytes.toByteArray(), &parse_error);
+  if (parse_error.error != QJsonParseError::NoError || !doc.isObject()) {
     if (error != nullptr) {
-      *error = parseError.errorString();
+      *error = parse_error.errorString();
     }
     return std::nullopt;
   }

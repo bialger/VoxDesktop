@@ -6,7 +6,7 @@ MessageListModel::MessageListModel(QObject *parent) : QAbstractListModel(parent)
 }
 
 int MessageListModel::rowCount(const QModelIndex &parent) const {
-  return parent.isValid() ? 0 : m_messages.size();
+  return parent.isValid() ? 0 : static_cast<int>(m_messages.size());
 }
 
 QVariant MessageListModel::data(const QModelIndex &index, int role) const {

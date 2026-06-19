@@ -1,6 +1,7 @@
 #include "crypto/HkdfSha256.hpp"
 
 #include "crypto/CryptoHelpers.hpp"
+#include "crypto/CryptoSizes.hpp"
 
 namespace vox::crypto {
 
@@ -9,10 +10,10 @@ QByteArray hkdfSha256(QByteArrayView ikm, QByteArrayView salt, QByteArrayView in
     return {};
   }
 
-  QByteArray normalizedSalt;
+  QByteArray normalized_salt;
   if (salt.empty()) {
-    normalizedSalt = QByteArray(32, '\0');
-    salt = normalizedSalt;
+    normalized_salt = QByteArray(kHkdfDefaultSaltBytes, '\0');
+    salt = normalized_salt;
   }
 
   const QByteArray prk = CryptoHelpers::hmacSha256(salt, ikm);
@@ -26,13 +27,13 @@ QByteArray hkdfSha256(QByteArrayView ikm, QByteArrayView salt, QByteArrayView in
   QByteArray t;
   quint8 counter = 1;
   while (out.size() < outputLen) {
-    QByteArray blockInput;
-    blockInput.reserve(t.size() + info.size() + 1);
-    blockInput.append(t);
-    blockInput.append(info.data(), info.size());
-    blockInput.append(static_cast<char>(counter));
+    QByteArray block_input;
+    block_input.reserve(t.size() + info.size() + 1);
+    block_input.append(t);
+    block_input.append(info.data(), info.size());
+    block_input.append(static_cast<char>(counter));
 
-    t = CryptoHelpers::hmacSha256(prk, blockInput);
+    t = CryptoHelpers::hmacSha256(prk, block_input);
     if (t.isEmpty()) {
       return {};
     }

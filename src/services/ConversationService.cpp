@@ -3,6 +3,14 @@
 #include <QStringList>
 
 namespace vox::services {
+namespace {
+
+constexpr int kConversationIdSuffixLength = 6;
+constexpr qint64 kMillisPerSecond = 1000;
+constexpr qint64 kMessageRetryDelayMs = 1000;
+constexpr int kSyncChangesPageSize = 100;
+
+} // namespace
 
 ConversationService::ConversationService(network::ConversationsApi &api,
                                          network::DirectoryApi &directoryApi,
@@ -17,9 +25,9 @@ bool ConversationService::refreshConversations() {
   }
 
   auto last6 = [](const QString &s) {
-    if (s.size() <= 6)
+    if (s.size() <= kConversationIdSuffixLength)
       return s;
-    return s.right(6);
+    return s.right(kConversationIdSuffixLength);
   };
 
   for (const auto &dto : *response.data) {

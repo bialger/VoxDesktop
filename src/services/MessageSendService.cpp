@@ -4,6 +4,12 @@
 #include <QUuid>
 
 namespace vox::services {
+namespace {
+
+constexpr qint64 kMillisPerSecond = 1000;
+constexpr qint64 kMessageRetryDelayMs = 1000;
+
+} // namespace
 
 MessageSendService::MessageSendService(network::ConversationsApi &api,
                                        storage::IMessagesRepository &messagesRepository,
@@ -19,24 +25,24 @@ bool MessageSendService::sendCiphertext(const QString &conversationId,
     return false;
   }
 
-  const QString envelopeId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+  const QString envelope_id = QUuid::createUuid().toString(QUuid::WithoutBraces);
 
   network::SendEnvelopeRequest request;
   request.deviceId = deviceId;
   request.conversationId = conversationId;
   request.ciphertext = ciphertext;
-  request.envelopeId = envelopeId;
+  request.envelopeId = envelope_id;
   request.envelopeType = envelopeType;
 
   const auto sent = m_api.sendEnvelope(request);
 
   domain::Message message;
-  message.messageId = envelopeId;
+  message.messageId = envelope_id;
   message.conversationId = conversationId;
   message.senderDeviceId = deviceId;
   message.senderUserId = "me";
   message.clientCreatedAtMs = QDateTime::currentMSecsSinceEpoch();
-  message.serverReceivedAtMs = sent.data.has_value() ? (sent.data->serverTimestamp * 1000) : 0;
+  message.serverReceivedAtMs = sent.data.has_value() ? (sent.data->serverTimestamp * kMillisPerSecond) : 0;
   message.ciphertextBlob = ciphertext.toUtf8();
   message.isOutgoing = true;
 
@@ -47,8 +53,8 @@ bool MessageSendService::sendCiphertext(const QString &conversationId,
 
   message.deliveryState = domain::DeliveryState::Queued;
   const bool stored = m_messagesRepository.upsertMessage(message);
-  const bool queued =
-      m_jobsRepository.enqueueJob("send_message", ciphertext.toUtf8(), QDateTime::currentMSecsSinceEpoch() + 1000);
+  const bool queued = m_jobsRepository.enqueueJob(
+      "send_message", ciphertext.toUtf8(), QDateTime::currentMSecsSinceEpoch() + kMessageRetryDelayMs);
   return stored && queued;
 }
 
@@ -66,24 +72,24 @@ bool MessageSendService::sendMessage(const QString &conversationId,
     return false;
   }
 
-  const QString envelopeId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+  const QString envelope_id = QUuid::createUuid().toString(QUuid::WithoutBraces);
 
   network::SendEnvelopeRequest request;
   request.deviceId = deviceId;
   request.conversationId = conversationId;
   request.ciphertext = ciphertext;
-  request.envelopeId = envelopeId;
+  request.envelopeId = envelope_id;
   request.envelopeType = envelopeType;
 
   const auto sent = m_api.sendEnvelope(request);
 
   domain::Message message;
-  message.messageId = envelopeId;
+  message.messageId = envelope_id;
   message.conversationId = conversationId;
   message.senderDeviceId = deviceId;
   message.senderUserId = "me";
   message.clientCreatedAtMs = QDateTime::currentMSecsSinceEpoch();
-  message.serverReceivedAtMs = sent.data.has_value() ? (sent.data->serverTimestamp * 1000) : 0;
+  message.serverReceivedAtMs = sent.data.has_value() ? (sent.data->serverTimestamp * kMillisPerSecond) : 0;
   message.ciphertextBlob = ciphertext.toUtf8();
   message.plaintextCacheCiphertext = plaintext.toUtf8();
   message.isOutgoing = true;
@@ -95,8 +101,8 @@ bool MessageSendService::sendMessage(const QString &conversationId,
 
   message.deliveryState = domain::DeliveryState::Queued;
   const bool stored = m_messagesRepository.upsertMessage(message);
-  const bool queued =
-      m_jobsRepository.enqueueJob("send_message", ciphertext.toUtf8(), QDateTime::currentMSecsSinceEpoch() + 1000);
+  const bool queued = m_jobsRepository.enqueueJob(
+      "send_message", ciphertext.toUtf8(), QDateTime::currentMSecsSinceEpoch() + kMessageRetryDelayMs);
   return stored && queued;
 }
 

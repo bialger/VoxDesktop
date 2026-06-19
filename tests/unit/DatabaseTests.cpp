@@ -45,8 +45,8 @@ TEST_F(ProjectUnitTestSuite, DatabaseOpenFailsOnInvalidPath) {
 
   vox::storage::Database db;
 
-  const QString invalidPath =
+  const QString invalid_path =
       QString::fromStdString((temporaryDirectory / "missing" / "nested" / "db.sqlite").string());
-  EXPECT_FALSE(db.open(invalidPath));
+  EXPECT_FALSE(db.open(invalid_path));
   EXPECT_FALSE(db.lastError().isEmpty());
 }

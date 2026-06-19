@@ -6,7 +6,7 @@
 namespace vox::storage {
 namespace {
 
-bool exec(QSqlQuery &query, const QString &statement, QString *error) {
+bool Exec(QSqlQuery &query, const QString &statement, QString *error) {
   if (query.exec(statement)) {
     return true;
   }
@@ -21,7 +21,7 @@ bool exec(QSqlQuery &query, const QString &statement, QString *error) {
 bool Migrations::run(QSqlDatabase db, QString *error) {
   QSqlQuery query(db);
 
-  if (!exec(query,
+  if (!Exec(query,
             "CREATE TABLE IF NOT EXISTS schema_migrations ("
             "id INTEGER PRIMARY KEY CHECK(id = 1),"
             "version INTEGER NOT NULL"
@@ -30,12 +30,12 @@ bool Migrations::run(QSqlDatabase db, QString *error) {
     return false;
   }
 
-  if (!exec(query, "INSERT OR IGNORE INTO schema_migrations(id, version) VALUES(1, 0)", error)) {
+  if (!Exec(query, "INSERT OR IGNORE INTO schema_migrations(id, version) VALUES(1, 0)", error)) {
     return false;
   }
 
   int version = 0;
-  if (!exec(query, "SELECT version FROM schema_migrations WHERE id = 1", error) || !query.next()) {
+  if (!Exec(query, "SELECT version FROM schema_migrations WHERE id = 1", error) || !query.next()) {
     return false;
   }
   version = query.value(0).toInt();
@@ -169,7 +169,7 @@ bool Migrations::run(QSqlDatabase db, QString *error) {
       "UPDATE schema_migrations SET version = 1 WHERE id = 1"};
 
   for (const auto &statement : statements) {
-    if (!exec(query, statement, error)) {
+    if (!Exec(query, statement, error)) {
       db.rollback();
       return false;
     }

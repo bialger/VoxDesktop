@@ -4,40 +4,50 @@
 #include <QSplitter>
 #include <QTabWidget>
 
+#include <memory>
+
 namespace vox::ui::shell {
+namespace {
 
-AppStack::AppStack(QWidget *parent) : QStackedWidget(parent) {
-  m_welcomePage = new auth::WelcomePage(this);
-  m_loginPage = new auth::LoginPage(this);
-  m_registerPage = new auth::RegisterPage(this);
+constexpr int kConversationListStretchFactor = 2;
+constexpr int kConversationViewStretchFactor = 5;
+constexpr int kRightTabsStretchFactor = 3;
 
+} // namespace
+
+AppStack::AppStack(QWidget *parent) :
+    QStackedWidget(parent), m_welcomePage(new auth::WelcomePage(this)), m_loginPage(new auth::LoginPage(this)),
+    m_registerPage(new auth::RegisterPage(this)), m_mainPage(new QWidget(this)) {
   addWidget(m_welcomePage);
   addWidget(m_loginPage);
   addWidget(m_registerPage);
 
-  m_mainPage = new QWidget(this);
-  auto *mainLayout = new QHBoxLayout(m_mainPage);
-  mainLayout->setContentsMargins(0, 0, 0, 0);
+  auto main_layout = std::make_unique<QHBoxLayout>();
+  main_layout->setContentsMargins(0, 0, 0, 0);
 
-  auto *splitter = new QSplitter(Qt::Horizontal, m_mainPage);
+  auto splitter = std::make_unique<QSplitter>(Qt::Horizontal, m_mainPage);
 
-  m_conversationListPane = new conversations::ConversationListPane(splitter);
-  m_conversationView = new conversations::ConversationView(splitter);
+  auto conversation_list = std::make_unique<conversations::ConversationListPane>(splitter.get());
+  m_conversationListPane = conversation_list.release();
+  auto conversation_view = std::make_unique<conversations::ConversationView>(splitter.get());
+  m_conversationView = conversation_view.release();
 
-  auto *rightTabs = new QTabWidget(splitter);
-  m_settingsPage = new settings::SettingsPage(rightTabs);
+  auto right_tabs = std::make_unique<QTabWidget>(splitter.get());
+  auto settings_page = std::make_unique<settings::SettingsPage>(right_tabs.get());
+  m_settingsPage = settings_page.release();
 
-  rightTabs->addTab(m_settingsPage, "Settings");
+  right_tabs->addTab(m_settingsPage, "Settings");
 
   splitter->addWidget(m_conversationListPane);
   splitter->addWidget(m_conversationView);
-  splitter->addWidget(rightTabs);
+  splitter->addWidget(right_tabs.release());
 
-  splitter->setStretchFactor(0, 2);
-  splitter->setStretchFactor(1, 5);
-  splitter->setStretchFactor(2, 3);
+  splitter->setStretchFactor(0, kConversationListStretchFactor);
+  splitter->setStretchFactor(1, kConversationViewStretchFactor);
+  splitter->setStretchFactor(2, kRightTabsStretchFactor);
 
-  mainLayout->addWidget(splitter);
+  main_layout->addWidget(splitter.release());
+  m_mainPage->setLayout(main_layout.release());
 
   addWidget(m_mainPage);
   showWelcome();

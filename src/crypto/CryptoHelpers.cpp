@@ -7,12 +7,12 @@
 namespace vox::crypto {
 namespace {
 
-bool checkLen(const QByteArrayView view, int expected) {
+bool CheckLen(const QByteArrayView view, int expected) {
   return view.size() == expected;
 }
 
-QByteArray makeArray(size_t size) {
-  return QByteArray(static_cast<int>(size), Qt::Uninitialized);
+QByteArray MakeArray(size_t size) {
+  return {static_cast<int>(size), Qt::Uninitialized};
 }
 
 } // namespace
@@ -57,16 +57,16 @@ QByteArray CryptoHelpers::aeadEncrypt(QByteArrayView key,
                                       QByteArrayView nonce12,
                                       QByteArrayView plaintext,
                                       QByteArrayView ad) {
-  if (!ensureSodiumInitialized() || !checkLen(key, crypto_aead_chacha20poly1305_ietf_KEYBYTES) ||
-      !checkLen(nonce12, crypto_aead_chacha20poly1305_ietf_NPUBBYTES)) {
+  if (!ensureSodiumInitialized() || !CheckLen(key, crypto_aead_chacha20poly1305_ietf_KEYBYTES) ||
+      !CheckLen(nonce12, crypto_aead_chacha20poly1305_ietf_NPUBBYTES)) {
     return {};
   }
 
-  QByteArray out = makeArray(static_cast<size_t>(plaintext.size()) + crypto_aead_chacha20poly1305_ietf_ABYTES);
-  unsigned long long outLen = 0;
+  QByteArray out = MakeArray(static_cast<size_t>(plaintext.size()) + crypto_aead_chacha20poly1305_ietf_ABYTES);
+  unsigned long long out_len = 0;
 
   const auto rc = crypto_aead_chacha20poly1305_ietf_encrypt(reinterpret_cast<unsigned char *>(out.data()),
-                                                            &outLen,
+                                                            &out_len,
                                                             reinterpret_cast<const unsigned char *>(plaintext.data()),
                                                             static_cast<unsigned long long>(plaintext.size()),
                                                             reinterpret_cast<const unsigned char *>(ad.data()),
@@ -79,7 +79,7 @@ QByteArray CryptoHelpers::aeadEncrypt(QByteArrayView key,
     return {};
   }
 
-  out.resize(static_cast<int>(outLen));
+  out.resize(static_cast<int>(out_len));
   return out;
 }
 
@@ -87,17 +87,17 @@ std::optional<QByteArray> CryptoHelpers::aeadDecrypt(QByteArrayView key,
                                                      QByteArrayView nonce12,
                                                      QByteArrayView ciphertext,
                                                      QByteArrayView ad) {
-  if (!ensureSodiumInitialized() || !checkLen(key, crypto_aead_chacha20poly1305_ietf_KEYBYTES) ||
-      !checkLen(nonce12, crypto_aead_chacha20poly1305_ietf_NPUBBYTES) ||
+  if (!ensureSodiumInitialized() || !CheckLen(key, crypto_aead_chacha20poly1305_ietf_KEYBYTES) ||
+      !CheckLen(nonce12, crypto_aead_chacha20poly1305_ietf_NPUBBYTES) ||
       ciphertext.size() < crypto_aead_chacha20poly1305_ietf_ABYTES) {
     return std::nullopt;
   }
 
-  QByteArray out = makeArray(static_cast<size_t>(ciphertext.size()));
-  unsigned long long outLen = 0;
+  QByteArray out = MakeArray(static_cast<size_t>(ciphertext.size()));
+  unsigned long long out_len = 0;
 
   const auto rc = crypto_aead_chacha20poly1305_ietf_decrypt(reinterpret_cast<unsigned char *>(out.data()),
-                                                            &outLen,
+                                                            &out_len,
                                                             nullptr,
                                                             reinterpret_cast<const unsigned char *>(ciphertext.data()),
                                                             static_cast<unsigned long long>(ciphertext.size()),
@@ -110,7 +110,7 @@ std::optional<QByteArray> CryptoHelpers::aeadDecrypt(QByteArrayView key,
     return std::nullopt;
   }
 
-  out.resize(static_cast<int>(outLen));
+  out.resize(static_cast<int>(out_len));
   return out;
 }
 
@@ -118,16 +118,16 @@ QByteArray CryptoHelpers::xchachaEncryptLocal(QByteArrayView key,
                                               QByteArrayView nonce24,
                                               QByteArrayView plaintext,
                                               QByteArrayView ad) {
-  if (!ensureSodiumInitialized() || !checkLen(key, crypto_aead_xchacha20poly1305_ietf_KEYBYTES) ||
-      !checkLen(nonce24, crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)) {
+  if (!ensureSodiumInitialized() || !CheckLen(key, crypto_aead_xchacha20poly1305_ietf_KEYBYTES) ||
+      !CheckLen(nonce24, crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)) {
     return {};
   }
 
-  QByteArray out = makeArray(static_cast<size_t>(plaintext.size()) + crypto_aead_xchacha20poly1305_ietf_ABYTES);
-  unsigned long long outLen = 0;
+  QByteArray out = MakeArray(static_cast<size_t>(plaintext.size()) + crypto_aead_xchacha20poly1305_ietf_ABYTES);
+  unsigned long long out_len = 0;
 
   const auto rc = crypto_aead_xchacha20poly1305_ietf_encrypt(reinterpret_cast<unsigned char *>(out.data()),
-                                                             &outLen,
+                                                             &out_len,
                                                              reinterpret_cast<const unsigned char *>(plaintext.data()),
                                                              static_cast<unsigned long long>(plaintext.size()),
                                                              reinterpret_cast<const unsigned char *>(ad.data()),
@@ -140,7 +140,7 @@ QByteArray CryptoHelpers::xchachaEncryptLocal(QByteArrayView key,
     return {};
   }
 
-  out.resize(static_cast<int>(outLen));
+  out.resize(static_cast<int>(out_len));
   return out;
 }
 
@@ -148,17 +148,17 @@ std::optional<QByteArray> CryptoHelpers::xchachaDecryptLocal(QByteArrayView key,
                                                              QByteArrayView nonce24,
                                                              QByteArrayView ciphertext,
                                                              QByteArrayView ad) {
-  if (!ensureSodiumInitialized() || !checkLen(key, crypto_aead_xchacha20poly1305_ietf_KEYBYTES) ||
-      !checkLen(nonce24, crypto_aead_xchacha20poly1305_ietf_NPUBBYTES) ||
+  if (!ensureSodiumInitialized() || !CheckLen(key, crypto_aead_xchacha20poly1305_ietf_KEYBYTES) ||
+      !CheckLen(nonce24, crypto_aead_xchacha20poly1305_ietf_NPUBBYTES) ||
       ciphertext.size() < crypto_aead_xchacha20poly1305_ietf_ABYTES) {
     return std::nullopt;
   }
 
-  QByteArray out = makeArray(static_cast<size_t>(ciphertext.size()));
-  unsigned long long outLen = 0;
+  QByteArray out = MakeArray(static_cast<size_t>(ciphertext.size()));
+  unsigned long long out_len = 0;
 
   const auto rc = crypto_aead_xchacha20poly1305_ietf_decrypt(reinterpret_cast<unsigned char *>(out.data()),
-                                                             &outLen,
+                                                             &out_len,
                                                              nullptr,
                                                              reinterpret_cast<const unsigned char *>(ciphertext.data()),
                                                              static_cast<unsigned long long>(ciphertext.size()),
@@ -171,13 +171,13 @@ std::optional<QByteArray> CryptoHelpers::xchachaDecryptLocal(QByteArrayView key,
     return std::nullopt;
   }
 
-  out.resize(static_cast<int>(outLen));
+  out.resize(static_cast<int>(out_len));
   return out;
 }
 
 QByteArray CryptoHelpers::x25519(QByteArrayView priv32, QByteArrayView pub32) {
-  if (!ensureSodiumInitialized() || !checkLen(priv32, crypto_scalarmult_SCALARBYTES) ||
-      !checkLen(pub32, crypto_scalarmult_BYTES)) {
+  if (!ensureSodiumInitialized() || !CheckLen(priv32, crypto_scalarmult_SCALARBYTES) ||
+      !CheckLen(pub32, crypto_scalarmult_BYTES)) {
     return {};
   }
 
@@ -197,9 +197,9 @@ QByteArray CryptoHelpers::ed25519Sign(QByteArrayView priv, QByteArrayView msg) {
   }
 
   QByteArray sig(crypto_sign_BYTES, Qt::Uninitialized);
-  unsigned long long sigLen = 0;
+  unsigned long long sig_len = 0;
   const auto rc = crypto_sign_detached(reinterpret_cast<unsigned char *>(sig.data()),
-                                       &sigLen,
+                                       &sig_len,
                                        reinterpret_cast<const unsigned char *>(msg.data()),
                                        static_cast<unsigned long long>(msg.size()),
                                        reinterpret_cast<const unsigned char *>(priv.data()));
@@ -207,7 +207,7 @@ QByteArray CryptoHelpers::ed25519Sign(QByteArrayView priv, QByteArrayView msg) {
     return {};
   }
 
-  sig.resize(static_cast<int>(sigLen));
+  sig.resize(static_cast<int>(sig_len));
   return sig;
 }
 
@@ -228,7 +228,7 @@ QByteArray CryptoHelpers::argon2idKdf(
     return {};
   }
 
-  QByteArray out = makeArray(outLen);
+  QByteArray out = MakeArray(outLen);
   const auto rc = crypto_pwhash(reinterpret_cast<unsigned char *>(out.data()),
                                 outLen,
                                 password.data(),

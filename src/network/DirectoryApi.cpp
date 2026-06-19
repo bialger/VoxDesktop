@@ -31,8 +31,8 @@ ApiResult<DirectoryUser> DirectoryApi::userByUsername(const QString &username) c
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -56,8 +56,8 @@ ApiResult<DirectoryUser> DirectoryApi::userById(const QString &userId) const {
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -78,10 +78,10 @@ ApiResult<QVector<DirectoryUser>> DirectoryApi::searchUsers(const QString &query
 
   if (response.ok()) {
     QVector<DirectoryUser> users;
-    const auto usersArray = object->value("users").toArray();
-    users.reserve(usersArray.size());
+    const auto users_array = object->value("users").toArray();
+    users.reserve(users_array.size());
 
-    for (const auto &item : usersArray) {
+    for (const auto &item : users_array) {
       const auto user = parseDirectoryUser(item.toObject());
       if (!user.has_value()) {
         result.error = "Invalid user entry in search result";
@@ -95,8 +95,8 @@ ApiResult<QVector<DirectoryUser>> DirectoryApi::searchUsers(const QString &query
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -130,8 +130,8 @@ ApiResult<QVector<DeviceDirectoryEntry>> DirectoryApi::userDevices(const QString
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 

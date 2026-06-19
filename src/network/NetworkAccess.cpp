@@ -6,9 +6,16 @@
 #include <QTimer>
 
 namespace vox::network {
+namespace {
+
+constexpr int kHttpStatusOkMin = 200;
+constexpr int kHttpStatusOkMaxExclusive = 300;
+constexpr int kNetworkTransferTimeoutMs = 15000;
+
+} // namespace
 
 bool NetworkResponse::ok() const {
-  return statusCode >= 200 && statusCode < 300 && errorMessage.isEmpty();
+  return statusCode >= kHttpStatusOkMin && statusCode < kHttpStatusOkMaxExclusive && errorMessage.isEmpty();
 }
 
 NetworkAccess::NetworkAccess(QString baseUrl) : m_baseUrl(std::move(baseUrl)) {
@@ -66,32 +73,32 @@ NetworkResponse NetworkAccess::execute(const QString &method,
                                        const QUrlQuery &query,
                                        const HeaderMap &headers,
                                        const QByteArray &contentType) const {
-  QString normalizedPath = path;
-  if (!normalizedPath.startsWith('/')) {
-    normalizedPath.prepend('/');
+  QString normalized_path = path;
+  if (!normalized_path.startsWith('/')) {
+    normalized_path.prepend('/');
   }
 
   if (m_customHandler) {
-    QString fullPath = normalizedPath;
+    QString full_path = normalized_path;
     if (!query.isEmpty()) {
-      fullPath += "?" + query.toString(QUrl::FullyEncoded);
+      full_path += "?" + query.toString(QUrl::FullyEncoded);
     }
 
-    HeaderMap effectiveHeaders = headers;
+    HeaderMap effective_headers = headers;
     if (!m_bearerToken.isEmpty()) {
-      effectiveHeaders.insert("Authorization", "Bearer " + m_bearerToken);
+      effective_headers.insert("Authorization", "Bearer " + m_bearerToken);
     }
     if (!contentType.isEmpty()) {
-      effectiveHeaders.insert("Content-Type", QString::fromUtf8(contentType));
+      effective_headers.insert("Content-Type", QString::fromUtf8(contentType));
     }
-    return m_customHandler(method, fullPath, body, effectiveHeaders);
+    return m_customHandler(method, full_path, body, effective_headers);
   }
 
-  QUrl url(m_baseUrl + normalizedPath);
+  QUrl url(m_baseUrl + normalized_path);
   url.setQuery(query);
 
   QNetworkRequest request(url);
-  request.setTransferTimeout(15'000);
+  request.setTransferTimeout(kNetworkTransferTimeoutMs);
 
   if (!m_bearerToken.isEmpty()) {
     request.setRawHeader("Authorization", ("Bearer " + m_bearerToken).toUtf8());
@@ -127,7 +134,7 @@ NetworkResponse NetworkAccess::execute(const QString &method,
     }
     loop.quit();
   });
-  timeout.start(15'000);
+  timeout.start(kNetworkTransferTimeoutMs);
   loop.exec();
 
   NetworkResponse result;

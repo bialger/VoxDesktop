@@ -10,14 +10,16 @@ class ConversationListModelQtTests : public QObject {
   Q_OBJECT
 
 private slots:
-  void setConversationsEmitsModelResetAndExposesRoles() {
+  void SetConversationsEmitsModelResetAndExposesRoles() {
+    constexpr int kExpectedUnreadCount = 5;
+
     vox::ui::conversations::ConversationListModel model;
     QSignalSpy spy(&model, &QAbstractItemModel::modelReset);
 
     vox::domain::Conversation conversation;
     conversation.conversationId = "conv_1";
     conversation.title = "General";
-    conversation.unreadCount = 5;
+    conversation.unreadCount = kExpectedUnreadCount;
 
     model.setConversations({conversation});
 
@@ -28,7 +30,7 @@ private slots:
     QCOMPARE(index.data(vox::ui::conversations::ConversationListModel::ConversationIdRole).toString(),
              QString("conv_1"));
     QCOMPARE(index.data(vox::ui::conversations::ConversationListModel::TitleRole).toString(), QString("General"));
-    QCOMPARE(index.data(vox::ui::conversations::ConversationListModel::UnreadCountRole).toInt(), 5);
+    QCOMPARE(index.data(vox::ui::conversations::ConversationListModel::UnreadCountRole).toInt(), kExpectedUnreadCount);
   }
 };
 
@@ -36,7 +38,7 @@ class MainWindowQtTests : public QObject {
   Q_OBJECT
 
 private slots:
-  void mainWindowConstructsCoreWidgets() {
+  void MainWindowConstructsCoreWidgets() {
     vox::ui::shell::MainWindow window;
     QVERIFY(window.centralWidget() != nullptr);
 

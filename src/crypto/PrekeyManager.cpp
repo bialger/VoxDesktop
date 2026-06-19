@@ -17,11 +17,11 @@ constexpr auto kSignedPrekeyPrivName = "signed_prekey_priv";
 constexpr auto kSignedPrekeySigName = "signed_prekey_sig";
 constexpr auto kOneTimeQueueName = "one_time_prekeys";
 
-QByteArray toB64(const QByteArray &bytes) {
+QByteArray ToB64(const QByteArray &bytes) {
   return bytes.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals);
 }
 
-QByteArray fromB64(const QByteArray &bytes) {
+QByteArray FromB64(const QByteArray &bytes) {
   return QByteArray::fromBase64(bytes, QByteArray::Base64UrlEncoding);
 }
 
@@ -41,28 +41,28 @@ std::optional<SignedPrekey> PrekeyManager::rotateSignedPrekey() {
     return std::nullopt;
   }
 
-  QByteArray prekeyPub(crypto_kx_PUBLICKEYBYTES, Qt::Uninitialized);
-  QByteArray prekeyPriv(crypto_kx_SECRETKEYBYTES, Qt::Uninitialized);
-  if (crypto_kx_keypair(reinterpret_cast<unsigned char *>(prekeyPub.data()),
-                        reinterpret_cast<unsigned char *>(prekeyPriv.data())) != 0) {
+  QByteArray prekey_pub(crypto_kx_PUBLICKEYBYTES, Qt::Uninitialized);
+  QByteArray prekey_priv(crypto_kx_SECRETKEYBYTES, Qt::Uninitialized);
+  if (crypto_kx_keypair(reinterpret_cast<unsigned char *>(prekey_pub.data()),
+                        reinterpret_cast<unsigned char *>(prekey_priv.data())) != 0) {
     return std::nullopt;
   }
 
-  const QByteArray signature = CryptoHelpers::ed25519Sign(identity->signingPrivate, prekeyPub);
+  const QByteArray signature = CryptoHelpers::ed25519Sign(identity->signingPrivate, prekey_pub);
   if (signature.isEmpty()) {
     return std::nullopt;
   }
 
-  const SignedPrekey signedPrekey{m_nextSignedPrekeyId++, prekeyPub, prekeyPriv, signature};
+  SignedPrekey signed_prekey{m_nextSignedPrekeyId++, prekey_pub, prekey_priv, signature};
 
-  if (!m_vault.storeSecret(kSignedPrekeyIdName, QByteArray::number(signedPrekey.keyId)) ||
-      !m_vault.storeSecret(kSignedPrekeyPubName, signedPrekey.publicKey) ||
-      !m_vault.storeSecret(kSignedPrekeyPrivName, signedPrekey.privateKey) ||
-      !m_vault.storeSecret(kSignedPrekeySigName, signedPrekey.signature)) {
+  if (!m_vault.storeSecret(kSignedPrekeyIdName, QByteArray::number(signed_prekey.keyId)) ||
+      !m_vault.storeSecret(kSignedPrekeyPubName, signed_prekey.publicKey) ||
+      !m_vault.storeSecret(kSignedPrekeyPrivName, signed_prekey.privateKey) ||
+      !m_vault.storeSecret(kSignedPrekeySigName, signed_prekey.signature)) {
     return std::nullopt;
   }
 
-  return signedPrekey;
+  return signed_prekey;
 }
 
 QVector<QByteArray> PrekeyManager::publishOneTimePrekeys(int count) {
@@ -75,19 +75,19 @@ QVector<QByteArray> PrekeyManager::publishOneTimePrekeys(int count) {
   created.reserve(count);
 
   for (int i = 0; i < count; ++i) {
-    QByteArray prekeyPub(crypto_kx_PUBLICKEYBYTES, Qt::Uninitialized);
-    QByteArray prekeyPriv(crypto_kx_SECRETKEYBYTES, Qt::Uninitialized);
-    if (crypto_kx_keypair(reinterpret_cast<unsigned char *>(prekeyPub.data()),
-                          reinterpret_cast<unsigned char *>(prekeyPriv.data())) != 0) {
+    QByteArray prekey_pub(crypto_kx_PUBLICKEYBYTES, Qt::Uninitialized);
+    QByteArray prekey_priv(crypto_kx_SECRETKEYBYTES, Qt::Uninitialized);
+    if (crypto_kx_keypair(reinterpret_cast<unsigned char *>(prekey_pub.data()),
+                          reinterpret_cast<unsigned char *>(prekey_priv.data())) != 0) {
       break;
     }
 
     QJsonObject item;
-    item.insert("pub", QString::fromUtf8(toB64(prekeyPub)));
-    item.insert("priv", QString::fromUtf8(toB64(prekeyPriv)));
+    item.insert("pub", QString::fromUtf8(ToB64(prekey_pub)));
+    item.insert("priv", QString::fromUtf8(ToB64(prekey_priv)));
 
     queue.push_back(QJsonDocument(item).toJson(QJsonDocument::Compact));
-    created.push_back(prekeyPub);
+    created.push_back(prekey_pub);
   }
 
   m_vault.storeSecret(kOneTimeQueueName, encodeOneTimeQueue(queue));
@@ -104,13 +104,13 @@ std::optional<QByteArray> PrekeyManager::consumeOneTimePrekey() {
   m_vault.storeSecret(kOneTimeQueueName, encodeOneTimeQueue(queue));
 
   const auto obj = QJsonDocument::fromJson(entry).object();
-  return fromB64(obj.value("priv").toString().toUtf8());
+  return FromB64(obj.value("priv").toString().toUtf8());
 }
 
 QByteArray PrekeyManager::encodeOneTimeQueue(const QVector<QByteArray> &keys) const {
   QJsonArray arr;
   for (const auto &key : keys) {
-    arr.append(QString::fromUtf8(toB64(key)));
+    arr.append(QString::fromUtf8(ToB64(key)));
   }
   return QJsonDocument(arr).toJson(QJsonDocument::Compact);
 }
@@ -124,7 +124,7 @@ QVector<QByteArray> PrekeyManager::decodeOneTimeQueue(QByteArrayView encoded) co
   const auto arr = QJsonDocument::fromJson(encoded.toByteArray()).array();
   out.reserve(arr.size());
   for (const auto &value : arr) {
-    out.push_back(fromB64(value.toString().toUtf8()));
+    out.push_back(FromB64(value.toString().toUtf8()));
   }
   return out;
 }

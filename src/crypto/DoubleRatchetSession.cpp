@@ -1,6 +1,7 @@
 #include "crypto/DoubleRatchetSession.hpp"
 
 #include "crypto/CryptoHelpers.hpp"
+#include "crypto/CryptoSizes.hpp"
 #include "crypto/HkdfSha256.hpp"
 
 #include <QtEndian>
@@ -9,7 +10,7 @@
 namespace vox::crypto {
 namespace {
 
-QByteArray intLabel(const char *prefix, int value) {
+QByteArray IntLabel(const char *prefix, int value) {
   QByteArray out(prefix);
   out.append(':');
   out.append(QByteArray::number(value));
@@ -30,17 +31,17 @@ QByteArray RatchetMessage::serialize() const {
 }
 
 std::optional<RatchetMessage> RatchetMessage::deserialize(QByteArrayView bytes) {
-  if (bytes.size() < 4 + 12 + 16) {
+  if (bytes.size() < kRatchetMinSerializedBytes) {
     return std::nullopt;
   }
 
-  quint32 beCounter = 0;
-  memcpy(&beCounter, bytes.data(), 4);
+  quint32 be_counter = 0;
+  memcpy(&be_counter, bytes.data(), 4);
 
   RatchetMessage msg;
-  msg.counter = static_cast<int>(qFromBigEndian(beCounter));
-  msg.nonce = QByteArray(bytes.data() + 4, 12);
-  msg.ciphertext = QByteArray(bytes.data() + 16, bytes.size() - 16);
+  msg.counter = static_cast<int>(qFromBigEndian(be_counter));
+  msg.nonce = QByteArray(bytes.data() + kRatchetCounterBytes, kChaCha20NonceBytes);
+  msg.ciphertext = QByteArray(bytes.data() + kRatchetHeaderBytes, bytes.size() - kRatchetHeaderBytes);
   return msg;
 }
 
@@ -48,23 +49,24 @@ DoubleRatchetSession DoubleRatchetSession::fromSharedSecret(QByteArray sharedSec
   DoubleRatchetSession session;
   session.m_rootKey = std::move(sharedSecret);
   session.m_associatedData = std::move(associatedData);
-  const QByteArray baseChainKey = hkdfSha256(session.m_rootKey, "vox-ratchet-chain", "vox-e2ee-v1/chain", 32);
-  session.m_sendChainKey = baseChainKey;
-  session.m_receiveChainKey = baseChainKey;
+  const QByteArray base_chain_key =
+      hkdfSha256(session.m_rootKey, "vox-ratchet-chain", "vox-e2ee-v1/chain", kChaCha20KeyBytes);
+  session.m_sendChainKey = base_chain_key;
+  session.m_receiveChainKey = base_chain_key;
   return session;
 }
 
 std::optional<QByteArray> DoubleRatchetSession::encrypt(QByteArrayView plaintext, QByteArrayView ad) {
-  const QByteArray messageKey = nextMessageKey(true, m_sendCounter);
-  if (messageKey.isEmpty()) {
+  const QByteArray message_key = nextMessageKey(true, m_sendCounter);
+  if (message_key.isEmpty()) {
     return std::nullopt;
   }
 
-  const QByteArray nonce = nextNonce(messageKey);
-  QByteArray localAd = m_associatedData;
-  localAd.append(ad.data(), ad.size());
+  const QByteArray nonce = nextNonce(message_key);
+  QByteArray local_ad = m_associatedData;
+  local_ad.append(ad.data(), ad.size());
 
-  const QByteArray ciphertext = CryptoHelpers::aeadEncrypt(messageKey, nonce, plaintext, localAd);
+  const QByteArray ciphertext = CryptoHelpers::aeadEncrypt(message_key, nonce, plaintext, local_ad);
   if (ciphertext.isEmpty()) {
     return std::nullopt;
   }
@@ -86,11 +88,11 @@ std::optional<QByteArray> DoubleRatchetSession::decrypt(QByteArrayView serialize
     ++m_receiveCounter;
   }
 
-  const QByteArray messageKey = nextMessageKey(false, parsed->counter);
-  QByteArray localAd = m_associatedData;
-  localAd.append(ad.data(), ad.size());
+  const QByteArray message_key = nextMessageKey(false, parsed->counter);
+  QByteArray local_ad = m_associatedData;
+  local_ad.append(ad.data(), ad.size());
 
-  const auto plaintext = CryptoHelpers::aeadDecrypt(messageKey, parsed->nonce, parsed->ciphertext, localAd);
+  auto plaintext = CryptoHelpers::aeadDecrypt(message_key, parsed->nonce, parsed->ciphertext, local_ad);
   if (!plaintext.has_value()) {
     return std::nullopt;
   }
@@ -110,17 +112,17 @@ int DoubleRatchetSession::receiveCounter() const {
 
 QByteArray DoubleRatchetSession::nextMessageKey(bool sending, int counter) const {
   const QByteArray &chain = sending ? m_sendChainKey : m_receiveChainKey;
-  return CryptoHelpers::hmacSha256(chain, intLabel("msg", counter));
+  return CryptoHelpers::hmacSha256(chain, IntLabel("msg", counter));
 }
 
 QByteArray DoubleRatchetSession::nextNonce(const QByteArray &messageKey) const {
   const QByteArray digest = CryptoHelpers::hmacSha256(messageKey, "nonce");
-  return digest.left(12);
+  return digest.left(kChaCha20NonceBytes);
 }
 
 void DoubleRatchetSession::advanceChain(bool sending, int counter) {
   QByteArray &chain = sending ? m_sendChainKey : m_receiveChainKey;
-  chain = CryptoHelpers::hmacSha256(chain, intLabel("chain", counter));
+  chain = CryptoHelpers::hmacSha256(chain, IntLabel("chain", counter));
 }
 
 } // namespace vox::crypto

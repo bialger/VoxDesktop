@@ -65,8 +65,8 @@ ApiResult<int> AuthApi::changePassword(const QString &currentPasswordDerived,
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -81,9 +81,9 @@ VoidResult AuthApi::parseVoidResponse(const NetworkResponse &response) const {
 
   const auto object = JsonCodec::parseObject(response.body, &result.error);
   if (object.has_value()) {
-    const auto apiError = parseApiError(*object);
-    if (apiError.has_value()) {
-      result.error = apiError->message;
+    const auto api_error = parseApiError(*object);
+    if (api_error.has_value()) {
+      result.error = api_error->message;
     }
   }
   if (result.error.isEmpty()) {

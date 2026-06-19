@@ -9,9 +9,15 @@ TEST_F(ProjectUnitTestSuite, JsonCodecParsesValidObject) {
       R"({"user_id":"usr_1","access_token":"acc","refresh_token":"ref","device_status":"created","sync_key_version":1})";
   const auto parsed = vox::network::JsonCodec::parseObject(payload);
   ASSERT_TRUE(parsed.has_value());
+  if (!parsed.has_value()) {
+    return;
+  }
 
   const auto auth = vox::network::parseAuthSessionResponse(*parsed);
   ASSERT_TRUE(auth.has_value());
+  if (!auth.has_value()) {
+    return;
+  }
   EXPECT_EQ(auth->userId, "usr_1");
   EXPECT_EQ(auth->deviceStatus, "created");
 }
@@ -28,11 +34,20 @@ TEST_F(ProjectUnitTestSuite, EnvelopeDtoParsesCanonicalFields) {
 
   const auto parsed = vox::network::JsonCodec::parseObject(payload);
   ASSERT_TRUE(parsed.has_value());
+  if (!parsed.has_value()) {
+    return;
+  }
 
   const auto envelope = vox::network::parseEnvelopeDto(*parsed);
   ASSERT_TRUE(envelope.has_value());
+  if (!envelope.has_value()) {
+    return;
+  }
   EXPECT_EQ(envelope->envelopeId, "env_1");
   ASSERT_TRUE(envelope->orderingEpoch.has_value());
+  if (!envelope->orderingEpoch.has_value()) {
+    return;
+  }
   EXPECT_EQ(*envelope->orderingEpoch, 3);
 }
 
@@ -42,6 +57,9 @@ TEST_F(ProjectUnitTestSuite, EnvelopeDtoFailsWhenRequiredFieldMissing) {
 
   const auto parsed = vox::network::JsonCodec::parseObject(payload);
   ASSERT_TRUE(parsed.has_value());
+  if (!parsed.has_value()) {
+    return;
+  }
 
   const auto envelope = vox::network::parseEnvelopeDto(*parsed);
   EXPECT_FALSE(envelope.has_value());

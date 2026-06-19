@@ -9,7 +9,7 @@ int ConversationListModel::rowCount(const QModelIndex &parent) const {
   if (parent.isValid()) {
     return 0;
   }
-  return m_conversations.size();
+  return static_cast<int>(m_conversations.size());
 }
 
 QVariant ConversationListModel::data(const QModelIndex &index, int role) const {

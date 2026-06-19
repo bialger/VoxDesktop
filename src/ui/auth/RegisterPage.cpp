@@ -4,29 +4,32 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 
+#include <memory>
+
 namespace vox::ui::auth {
 
-RegisterPage::RegisterPage(QWidget *parent) : QWidget(parent) {
-  auto *layout = new QVBoxLayout(this);
+RegisterPage::RegisterPage(QWidget *parent) :
+    QWidget(parent), m_username(new QLineEdit(this)), m_password(new QLineEdit(this)) {
+  auto layout = std::make_unique<QVBoxLayout>();
 
-  auto *formLayout = new QFormLayout;
-  m_username = new QLineEdit(this);
-  m_password = new QLineEdit(this);
+  auto form_layout = std::make_unique<QFormLayout>();
+
   m_password->setEchoMode(QLineEdit::Password);
 
-  formLayout->addRow("Username", m_username);
-  formLayout->addRow("Password", m_password);
+  form_layout->addRow("Username", m_username);
+  form_layout->addRow("Password", m_password);
 
-  auto *buttonsLayout = new QHBoxLayout;
+  auto buttons_layout = std::make_unique<QHBoxLayout>();
   auto *back = new QPushButton("Back", this);
   auto *submit = new QPushButton("Register", this);
 
-  buttonsLayout->addWidget(back);
-  buttonsLayout->addStretch(1);
-  buttonsLayout->addWidget(submit);
+  buttons_layout->addWidget(back);
+  buttons_layout->addStretch(1);
+  buttons_layout->addWidget(submit);
 
-  layout->addLayout(formLayout);
-  layout->addLayout(buttonsLayout);
+  layout->addLayout(form_layout.release());
+  layout->addLayout(buttons_layout.release());
+  setLayout(layout.release());
 
   connect(back, &QPushButton::clicked, this, &RegisterPage::backRequested);
   connect(submit, &QPushButton::clicked, this, [this]() {

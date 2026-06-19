@@ -10,10 +10,16 @@
 #include <QSettings>
 #include <QVBoxLayout>
 
+#include <memory>
+
 namespace vox::ui::auth {
 namespace {
 
-QString normalizeBaseUrl(QString url) {
+constexpr int kTitleFontPointSize = 20;
+constexpr int kSectionSpacingPx = 16;
+constexpr int kButtonSectionSpacingPx = 12;
+
+QString NormalizeBaseUrl(QString url) {
   url = url.trimmed();
   while (url.endsWith('/')) {
     url.chop(1);
@@ -21,7 +27,7 @@ QString normalizeBaseUrl(QString url) {
   return url;
 }
 
-bool checkHealthSync(const QString &baseUrl) {
+bool CheckHealthSync(const QString &baseUrl) {
   network::NetworkAccess net(baseUrl);
   const auto response = net.get(network::ApiPaths::kHealth);
   if (!response.ok()) {
@@ -33,40 +39,43 @@ bool checkHealthSync(const QString &baseUrl) {
 
 } // namespace
 
-WelcomePage::WelcomePage(QWidget *parent) : QWidget(parent) {
-  auto *layout = new QVBoxLayout(this);
+WelcomePage::WelcomePage(QWidget *parent) :
+    QWidget(parent), m_baseUrlEdit(new QLineEdit(this)), m_statusLabel(new QLabel(this)) {
+  auto layout = std::make_unique<QVBoxLayout>();
   layout->setAlignment(Qt::AlignCenter);
 
   auto *title = new QLabel("Vox Messenger", this);
   QFont font = title->font();
-  font.setPointSize(20);
+  font.setPointSize(kTitleFontPointSize);
   font.setBold(true);
   title->setFont(font);
 
-  m_baseUrlEdit = new QLineEdit(this);
   m_baseUrlEdit->setPlaceholderText("Server URL, e.g. http://127.0.0.1:8080");
 
-  const QString defaultUrl = qEnvironmentVariableIsSet("VOX_BASE_URL") ? QString::fromUtf8(qgetenv("VOX_BASE_URL"))
-                                                                       : QStringLiteral("http://127.0.0.1:8080");
+  const QString default_url = qEnvironmentVariableIsSet("VOX_BASE_URL") ? QString::fromUtf8(qgetenv("VOX_BASE_URL"))
+                                                                        : QStringLiteral("http://127.0.0.1:8080");
   QSettings settings;
   const QString remembered = settings.value("vox/server_base_url").toString();
-  m_baseUrlEdit->setText(remembered.isEmpty() ? defaultUrl : remembered);
+  m_baseUrlEdit->setText(remembered.isEmpty() ? default_url : remembered);
 
-  m_connectButton = new QPushButton("Connect", this);
-  m_statusLabel = new QLabel(this);
+  auto connect_button = std::make_unique<QPushButton>("Connect", this);
+  m_connectButton = connect_button.release();
+
   m_statusLabel->setText("Not connected");
 
-  m_loginButton = new QPushButton("Login", this);
-  m_registerButton = new QPushButton("Register", this);
+  auto login_button = std::make_unique<QPushButton>("Login", this);
+  m_loginButton = login_button.release();
+  auto register_button = std::make_unique<QPushButton>("Register", this);
+  m_registerButton = register_button.release();
   m_loginButton->setEnabled(false);
   m_registerButton->setEnabled(false);
 
   layout->addWidget(title);
-  layout->addSpacing(16);
+  layout->addSpacing(kSectionSpacingPx);
   layout->addWidget(m_baseUrlEdit);
   layout->addWidget(m_connectButton);
   layout->addWidget(m_statusLabel);
-  layout->addSpacing(12);
+  layout->addSpacing(kButtonSectionSpacingPx);
   layout->addWidget(m_loginButton);
   layout->addWidget(m_registerButton);
 
@@ -76,6 +85,7 @@ WelcomePage::WelcomePage(QWidget *parent) : QWidget(parent) {
 
   connect(m_loginButton, &QPushButton::clicked, this, &WelcomePage::loginRequested);
   connect(m_registerButton, &QPushButton::clicked, this, &WelcomePage::registerRequested);
+  setLayout(layout.release());
 }
 
 QString WelcomePage::selectedBaseUrl() const {
@@ -87,10 +97,10 @@ void WelcomePage::onConnectClicked() {
     return;
   }
 
-  const QString baseUrl = normalizeBaseUrl(m_baseUrlEdit->text());
-  m_baseUrlEdit->setText(baseUrl);
+  const QString base_url = NormalizeBaseUrl(m_baseUrlEdit->text());
+  m_baseUrlEdit->setText(base_url);
 
-  if (!(baseUrl.startsWith("http://") || baseUrl.startsWith("https://"))) {
+  if (!(base_url.startsWith("http://") || base_url.startsWith("https://"))) {
     setStatusError("URL must start with http:// or https://");
     return;
   }
@@ -98,27 +108,27 @@ void WelcomePage::onConnectClicked() {
   setUiBusy(true);
   m_statusLabel->setText("Checking server health…");
 
-  m_healthWatcher.setFuture(QtConcurrent::run([baseUrl]() { return checkHealthSync(baseUrl); }));
+  m_healthWatcher.setFuture(QtConcurrent::run([base_url]() { return CheckHealthSync(base_url); }));
 }
 
 void WelcomePage::onHealthFinished() {
   setUiBusy(false);
 
   const bool ok = m_healthWatcher.result();
-  const QString baseUrl = normalizeBaseUrl(m_baseUrlEdit->text());
+  const QString base_url = NormalizeBaseUrl(m_baseUrlEdit->text());
   if (!ok) {
     setStatusError("Health check failed. Verify URL and server status.");
     return;
   }
 
-  m_selectedBaseUrl = baseUrl;
+  m_selectedBaseUrl = base_url;
   QSettings settings;
-  settings.setValue("vox/server_base_url", baseUrl);
+  settings.setValue("vox/server_base_url", base_url);
 
   setStatusOk("Connected");
   m_loginButton->setEnabled(true);
   m_registerButton->setEnabled(true);
-  emit serverBaseUrlReady(baseUrl);
+  emit serverBaseUrlReady(base_url);
 }
 
 void WelcomePage::setUiBusy(bool busy) {

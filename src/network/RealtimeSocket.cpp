@@ -110,8 +110,8 @@ void RealtimeSocket::scheduleReconnect() {
 #else
   ++m_reconnectAttempt;
   const int capped = std::min(m_reconnectAttempt, 6);
-  const int delayMs = (1 << capped) * 250;
-  m_reconnectTimer.start(delayMs);
+  const int delay_ms = (1 << capped) * 250;
+  m_reconnectTimer.start(delay_ms);
 #endif
 }
 

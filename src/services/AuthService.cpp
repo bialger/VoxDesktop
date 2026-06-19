@@ -10,11 +10,11 @@
 namespace vox::services {
 namespace {
 
-QString toB64(const QByteArray &bytes) {
+QString ToB64(const QByteArray &bytes) {
   return QString::fromUtf8(bytes.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
 }
 
-QString sha256HexLower(const QString &input) {
+QString Sha256HexLower(const QString &input) {
   const QByteArray hash = QCryptographicHash::hash(input.toUtf8(), QCryptographicHash::Sha256);
   return QString::fromLatin1(hash.toHex());
 }
@@ -39,22 +39,22 @@ bool AuthService::registerUser(const QString &username, const QString &passwordD
     return false;
   }
 
-  const QString derived = sha256HexLower(passwordDerived);
+  const QString derived = Sha256HexLower(passwordDerived);
 
   if (!m_identity.ensureIdentityKeys()) {
     return false;
   }
 
   const auto identity = m_identity.identityKeys();
-  const auto signedPrekey = m_prekeys.rotateSignedPrekey();
+  const auto signed_prekey = m_prekeys.rotateSignedPrekey();
 
-  if (!identity.has_value() || !signedPrekey.has_value()) {
+  if (!identity.has_value() || !signed_prekey.has_value()) {
     return false;
   }
 
-  const QByteArray syncMasterKey = crypto::CryptoHelpers::randomBytes(32);
-  const auto wrappedSync = crypto::SyncCrypto::wrapSyncMasterKey(derived.toUtf8(), syncMasterKey);
-  if (!wrappedSync.has_value()) {
+  const QByteArray sync_master_key = crypto::CryptoHelpers::randomBytes(32);
+  const auto wrapped_sync = crypto::SyncCrypto::wrapSyncMasterKey(derived.toUtf8(), sync_master_key);
+  if (!wrapped_sync.has_value()) {
     return false;
   }
 
@@ -63,12 +63,12 @@ bool AuthService::registerUser(const QString &username, const QString &passwordD
   request.passwordDerivedValue = derived;
   request.deviceId = m_deviceId;
   request.deviceLabel = "Vox Desktop";
-  request.identityKeyPublic = toB64(identity->dhPublic);
-  request.signedPrekeyPublic = toB64(signedPrekey->publicKey);
-  request.signedPrekeySignature = toB64(signedPrekey->signature);
-  request.wrappedSyncKey = toB64(wrappedSync->wrappedSyncKey);
-  request.syncWrapSalt = toB64(wrappedSync->salt);
-  request.syncWrapParams = wrappedSync->params.toJson();
+  request.identityKeyPublic = ToB64(identity->dhPublic);
+  request.signedPrekeyPublic = ToB64(signed_prekey->publicKey);
+  request.signedPrekeySignature = ToB64(signed_prekey->signature);
+  request.wrappedSyncKey = ToB64(wrapped_sync->wrappedSyncKey);
+  request.syncWrapSalt = ToB64(wrapped_sync->salt);
+  request.syncWrapParams = wrapped_sync->params.toJson();
 
   const auto response = m_authApi.registerUser(request);
   if (!response.ok || !response.data.has_value()) {
@@ -83,7 +83,7 @@ bool AuthService::login(const QString &username, const QString &passwordDerived)
     return false;
   }
 
-  const QString derived = sha256HexLower(passwordDerived);
+  const QString derived = Sha256HexLower(passwordDerived);
 
   network::LoginRequest request;
   request.username = username;
@@ -93,11 +93,11 @@ bool AuthService::login(const QString &username, const QString &passwordDerived)
 
   if (m_identity.ensureIdentityKeys()) {
     const auto identity = m_identity.identityKeys();
-    const auto signedPrekey = m_prekeys.rotateSignedPrekey();
-    if (identity.has_value() && signedPrekey.has_value()) {
-      request.identityKeyPublic = toB64(identity->dhPublic);
-      request.signedPrekeyPublic = toB64(signedPrekey->publicKey);
-      request.signedPrekeySignature = toB64(signedPrekey->signature);
+    const auto signed_prekey = m_prekeys.rotateSignedPrekey();
+    if (identity.has_value() && signed_prekey.has_value()) {
+      request.identityKeyPublic = ToB64(identity->dhPublic);
+      request.signedPrekeyPublic = ToB64(signed_prekey->publicKey);
+      request.signedPrekeySignature = ToB64(signed_prekey->signature);
     }
   }
 
@@ -115,13 +115,13 @@ bool AuthService::restoreSession() {
     return false;
   }
 
-  const auto refreshToken = m_vault.loadSecret("refresh_token/" + account->userId);
-  if (!refreshToken.has_value()) {
+  const auto refresh_token = m_vault.loadSecret("refresh_token/" + account->userId);
+  if (!refresh_token.has_value()) {
     return false;
   }
 
   const auto refreshed =
-      m_authApi.refresh(network::RefreshRequest{QString::fromUtf8(*refreshToken), account->activeDeviceId});
+      m_authApi.refresh(network::RefreshRequest{QString::fromUtf8(*refresh_token), account->activeDeviceId});
   if (!refreshed.ok || !refreshed.data.has_value()) {
     return false;
   }

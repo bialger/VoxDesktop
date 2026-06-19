@@ -3,6 +3,11 @@
 #include <QDateTime>
 
 namespace vox::services {
+namespace {
+
+constexpr int kSyncChangesPageSize = 100;
+
+} // namespace
 
 SyncService::SyncService(network::SyncApi &api, storage::ISyncRepository &repository) :
     m_api(api), m_repository(repository) {
@@ -10,8 +15,8 @@ SyncService::SyncService(network::SyncApi &api, storage::ISyncRepository &reposi
 
 bool SyncService::pullCollection(const QString &collection) {
   QString cursor;
-  do {
-    const auto changes = m_api.changes(collection, cursor, 100);
+  while (true) {
+    const auto changes = m_api.changes(collection, cursor, kSyncChangesPageSize);
     if (!changes.ok || !changes.data.has_value()) {
       return false;
     }
@@ -33,7 +38,7 @@ bool SyncService::pullCollection(const QString &collection) {
     if (!changes.data->hasMore) {
       break;
     }
-  } while (true);
+  }
 
   return true;
 }

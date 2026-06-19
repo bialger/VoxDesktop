@@ -1,6 +1,7 @@
 #include "crypto/X3dhSessionBuilder.hpp"
 
 #include "crypto/CryptoHelpers.hpp"
+#include "crypto/CryptoSizes.hpp"
 #include "crypto/HkdfSha256.hpp"
 
 namespace vox::crypto {
@@ -15,7 +16,7 @@ std::optional<QByteArray> X3dhSessionBuilder::buildInitialSharedSecret(const X3d
   }
 
   QByteArray ikm;
-  ikm.reserve(dh1.size() + dh2.size() + dh3.size() + 32);
+  ikm.reserve(dh1.size() + dh2.size() + dh3.size() + kChaCha20KeyBytes);
   ikm.append(dh1);
   ikm.append(dh2);
   ikm.append(dh3);
@@ -28,12 +29,12 @@ std::optional<QByteArray> X3dhSessionBuilder::buildInitialSharedSecret(const X3d
     ikm.append(dh4);
   }
 
-  const QByteArray rootKey = hkdfSha256(ikm, "vox-x3dh-salt", "vox-e2ee-v1/x3dh", 32);
-  if (rootKey.size() != 32) {
+  QByteArray root_key = hkdfSha256(ikm, "vox-x3dh-salt", "vox-e2ee-v1/x3dh", kChaCha20KeyBytes);
+  if (root_key.size() != kChaCha20KeyBytes) {
     return std::nullopt;
   }
 
-  return rootKey;
+  return root_key;
 }
 
 } // namespace vox::crypto

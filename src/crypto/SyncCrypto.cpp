@@ -1,10 +1,16 @@
 #include "crypto/SyncCrypto.hpp"
 
 #include "crypto/CryptoHelpers.hpp"
+#include "crypto/CryptoSizes.hpp"
 
 #include <sodium.h>
 
 namespace vox::crypto {
+namespace {
+
+constexpr int kBytesPerKiB = 1024;
+
+} // namespace
 
 QJsonObject SyncWrapParams::toJson() const {
   QJsonObject json;
@@ -26,7 +32,7 @@ SyncWrapParams SyncWrapParams::fromJson(const QJsonObject &obj) {
 std::optional<WrappedSyncKeyBundle> SyncCrypto::wrapSyncMasterKey(QByteArrayView passwordDerived,
                                                                   QByteArrayView syncMasterKey,
                                                                   SyncWrapParams params) {
-  if (passwordDerived.empty() || syncMasterKey.size() != 32) {
+  if (passwordDerived.empty() || syncMasterKey.size() != kChaCha20KeyBytes) {
     return std::nullopt;
   }
 
@@ -35,14 +41,17 @@ std::optional<WrappedSyncKeyBundle> SyncCrypto::wrapSyncMasterKey(QByteArrayView
     return std::nullopt;
   }
 
-  const auto kek = CryptoHelpers::argon2idKdf(
-      passwordDerived, salt, static_cast<quint64>(params.iterations), static_cast<size_t>(params.memoryKiB) * 1024, 32);
-  if (kek.size() != 32) {
+  const auto kek = CryptoHelpers::argon2idKdf(passwordDerived,
+                                              salt,
+                                              static_cast<quint64>(params.iterations),
+                                              static_cast<size_t>(params.memoryKiB) * kBytesPerKiB,
+                                              kChaCha20KeyBytes);
+  if (kek.size() != kChaCha20KeyBytes) {
     return std::nullopt;
   }
 
-  const QByteArray nonce = CryptoHelpers::randomBytes(24);
-  if (nonce.size() != 24) {
+  const QByteArray nonce = CryptoHelpers::randomBytes(kXChaCha20NonceBytes);
+  if (nonce.size() != kXChaCha20NonceBytes) {
     return std::nullopt;
   }
 
@@ -58,21 +67,21 @@ std::optional<WrappedSyncKeyBundle> SyncCrypto::wrapSyncMasterKey(QByteArrayView
 
 std::optional<QByteArray> SyncCrypto::unwrapSyncMasterKey(QByteArrayView passwordDerived,
                                                           const WrappedSyncKeyBundle &bundle) {
-  if (passwordDerived.empty() || bundle.wrappedSyncKey.size() < 24 + 16) {
+  if (passwordDerived.empty() || bundle.wrappedSyncKey.size() < kXChaCha20NonceBytes + kChaCha20TagBytes) {
     return std::nullopt;
   }
 
   const auto kek = CryptoHelpers::argon2idKdf(passwordDerived,
                                               bundle.salt,
                                               static_cast<quint64>(bundle.params.iterations),
-                                              static_cast<size_t>(bundle.params.memoryKiB) * 1024,
-                                              32);
-  if (kek.size() != 32) {
+                                              static_cast<size_t>(bundle.params.memoryKiB) * kBytesPerKiB,
+                                              kChaCha20KeyBytes);
+  if (kek.size() != kChaCha20KeyBytes) {
     return std::nullopt;
   }
 
-  const QByteArray nonce = bundle.wrappedSyncKey.left(24);
-  const QByteArray ciphertext = bundle.wrappedSyncKey.mid(24);
+  const QByteArray nonce = bundle.wrappedSyncKey.left(kXChaCha20NonceBytes);
+  const QByteArray ciphertext = bundle.wrappedSyncKey.mid(kXChaCha20NonceBytes);
 
   return CryptoHelpers::xchachaDecryptLocal(kek, nonce, ciphertext, "vox-sync-v1");
 }

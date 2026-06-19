@@ -19,6 +19,7 @@
 #include <QThread>
 #include <QTimer>
 #include <QUrl>
+#include <memory>
 #ifdef VOX_HAS_QT_WEBSOCKETS
 #include <QWebSocket>
 #endif
@@ -33,47 +34,55 @@
 namespace vox::app {
 namespace {
 
-QByteArray b64(const QByteArray &bytes) {
+constexpr int kPollIntervalMs = 2000;
+constexpr qint64 kMillisPerSecond = 1000;
+constexpr int kConversationIdSuffixLength = 6;
+constexpr int kConversationMessagesPageSize = 200;
+constexpr int kPendingEnvelopesPageSize = 100;
+constexpr int kUiRefreshDelayMs = 1500;
+constexpr int kUiRefreshRetryDelayMs = 3500;
+
+QByteArray B64(const QByteArray &bytes) {
   return bytes.toBase64(QByteArray::Base64Encoding);
 }
 
-std::optional<QString> decryptForUi(const QString &ciphertext) {
+std::optional<QString> DecryptForUi(const QString &ciphertext) {
   if (ciphertext.trimmed().isEmpty()) {
     return QString{};
   }
 
-  const auto asUtf8 = ciphertext.toUtf8();
+  const auto as_utf8 = ciphertext.toUtf8();
   if (ciphertext.startsWith("vox1:")) {
-    const QByteArray decoded = QByteArray::fromBase64(asUtf8.mid(5));
+    const QByteArray decoded = QByteArray::fromBase64(as_utf8.mid(5));
     if (!decoded.isEmpty()) {
       return QString::fromUtf8(decoded);
     }
   }
 
   // plaintext-looking fallback
-  bool looksPlain = true;
-  for (const auto ch : asUtf8) {
+  bool looks_plain = true;
+  for (const auto ch : as_utf8) {
     if (ch == 0) {
-      looksPlain = false;
+      looks_plain = false;
       break;
     }
   }
-  if (looksPlain) {
+  if (looks_plain) {
     return ciphertext;
   }
 
-  const QByteArray decoded = QByteArray::fromBase64(asUtf8);
+  const QByteArray decoded = QByteArray::fromBase64(as_utf8);
   if (!decoded.isEmpty()) {
     return QString::fromUtf8(decoded);
   }
   return std::nullopt;
 }
 
-QString encryptForTransport(const QString &plaintext) {
-  return QStringLiteral("vox1:") + QString::fromUtf8(b64(plaintext.toUtf8()));
+QString EncryptForTransport(const QString &plaintext) {
+  return QStringLiteral("vox1:") + QString::fromUtf8(B64(plaintext.toUtf8()));
 }
 
-QUrl wsUrlForBaseUrl(QString baseUrl) {
+QUrl WsUrlForBaseUrl(QString baseUrl) {
   baseUrl = baseUrl.trimmed();
   while (baseUrl.endsWith('/'))
     baseUrl.chop(1);
@@ -87,7 +96,7 @@ QUrl wsUrlForBaseUrl(QString baseUrl) {
   return url;
 }
 
-bool startupDiagnostics(QString *error) {
+bool StartupDiagnostics(QString *error) {
   if (!crypto::ensureSodiumInitialized()) {
     *error = "sodium_init failed";
     return false;
@@ -103,19 +112,19 @@ bool startupDiagnostics(QString *error) {
     return false;
   }
 
-  const QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-  if (appData.isEmpty()) {
+  const QString app_data = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+  if (app_data.isEmpty()) {
     *error = "No writable AppData path";
     return false;
   }
 
-  QDir appDataDir(appData);
-  if (!appDataDir.exists() && !appDataDir.mkpath(".")) {
+  QDir app_data_dir(app_data);
+  if (!app_data_dir.exists() && !app_data_dir.mkpath(".")) {
     *error = "Failed to create AppData directory";
     return false;
   }
 
-  QFile probe(appData + "/.vox_write_probe");
+  QFile probe(app_data + "/.vox_write_probe");
   if (!probe.open(QIODevice::WriteOnly)) {
     *error = "AppData path is not writable";
     return false;
@@ -136,7 +145,7 @@ bool startupDiagnostics(QString *error) {
 }
 
 template<typename Fn>
-auto runOnServiceThread(QObject *context, Fn &&task) -> std::invoke_result_t<Fn> {
+auto RunOnServiceThread(QObject *context, Fn &&task) -> std::invoke_result_t<Fn> {
   using Result = std::invoke_result_t<Fn>;
 
   if (QThread::currentThread() == context->thread()) {
@@ -164,31 +173,32 @@ auto runOnServiceThread(QObject *context, Fn &&task) -> std::invoke_result_t<Fn>
 
 int Application::run(int argc, char **argv) {
   QApplication app(argc, argv);
-  app.setWindowIcon(QIcon(":/vox_logo.png"));
+  QApplication::setWindowIcon(QIcon(":/vox_logo.png"));
 
-  QString diagnosticsError;
-  if (!startupDiagnostics(&diagnosticsError)) {
-    QMessageBox::critical(nullptr, "Vox startup failure", diagnosticsError);
+  QString diagnostics_error;
+  if (!StartupDiagnostics(&diagnostics_error)) {
+    QMessageBox::critical(nullptr, "Vox startup failure", diagnostics_error);
     return 1;
   }
 
-  const QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-  const QString vaultPassword = qEnvironmentVariableIsSet("VOX_VAULT_PASSWORD")
-                                    ? QString::fromUtf8(qgetenv("VOX_VAULT_PASSWORD"))
-                                    : QStringLiteral("vox-dev-password");
+  const QString app_data_path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+  const QString vault_password = qEnvironmentVariableIsSet("VOX_VAULT_PASSWORD")
+                                     ? QString::fromUtf8(qgetenv("VOX_VAULT_PASSWORD"))
+                                     : QStringLiteral("vox-dev-password");
 
   ui::shell::MainWindow window;
   window.setWindowIcon(QIcon(":/vox_logo.png"));
 
-  QThread serviceThread;
-  serviceThread.setObjectName("vox-service");
-  serviceThread.start();
-  auto *serviceContext = new QObject();
-  serviceContext->moveToThread(&serviceThread);
+  QThread service_thread;
+  service_thread.setObjectName("vox-service");
+  service_thread.start();
+  auto service_context = std::make_unique<QObject>();
+  service_context->moveToThread(&service_thread);
+  QObject *const service_context_ptr = service_context.get();
 
   auto services = std::make_shared<app::ServiceLocator>();
-  auto serviceCall = [serviceContext](auto &&task) -> decltype(auto) {
-    return runOnServiceThread(serviceContext, std::forward<decltype(task)>(task));
+  auto service_call = [service_context_ptr](auto &&task) -> decltype(auto) {
+    return RunOnServiceThread(service_context_ptr, std::forward<decltype(task)>(task));
   };
   struct UiState {
     QString selectedConversationId;
@@ -197,68 +207,69 @@ int Application::run(int argc, char **argv) {
     bool selectedConversationIsSelfDm{false};
   };
   auto state = std::make_shared<UiState>();
-  bool servicesInitialized = false;
+  bool services_initialized = false;
 
   // Realtime: prefer WebSocket push, fallback to polling /v1/sync/pending.
-  auto *realtime = new network::RealtimeSocket(&window);
-  QTimer pollTimer(&window);
-  pollTimer.setInterval(2000);
-  QString pendingCursor;
+  network::RealtimeSocket realtime(&window);
+  QTimer poll_timer(&window);
+  poll_timer.setInterval(kPollIntervalMs);
+  QString pending_cursor;
 
-  auto applyEnvelope = [&, services, state](const network::EnvelopeDto &env) {
-    if (!servicesInitialized)
+  auto apply_envelope = [&, services, state](const network::EnvelopeDto &env) {
+    if (!services_initialized)
       return;
-    const auto auth = serviceCall([&services]() { return services->authService()->context(); });
-    const QString myDeviceId = auth.has_value() ? auth->deviceId : QString{};
-    const QString myUserId = auth.has_value() ? auth->userId : QString{};
-    const QString myUsername = auth.has_value() ? auth->username : QString{};
+    const auto auth = service_call([&services]() { return services->authService()->context(); });
+    const QString my_device_id = auth.has_value() ? auth->deviceId : QString{};
+    const QString my_user_id = auth.has_value() ? auth->userId : QString{};
+    const QString my_username = auth.has_value() ? auth->username : QString{};
 
     domain::Message msg;
     msg.messageId = env.envelopeId;
     msg.conversationId = env.conversationId;
-    const QString senderUserId = env.senderUserId;
+    const QString sender_user_id = env.senderUserId;
     msg.senderDeviceId = env.senderDeviceId;
-    msg.serverReceivedAtMs = env.serverTimestamp * 1000;
+    msg.serverReceivedAtMs = env.serverTimestamp * kMillisPerSecond;
     msg.clientCreatedAtMs = msg.serverReceivedAtMs;
     msg.ciphertextBlob = env.ciphertext.toUtf8();
 
-    const auto plaintext = decryptForUi(env.ciphertext);
+    const auto plaintext = DecryptForUi(env.ciphertext);
     if (plaintext.has_value()) {
       msg.plaintextCacheCiphertext = plaintext->toUtf8();
     } else {
-      msg.plaintextCacheCiphertext = QString("[Encrypted envelope %1]").arg(env.envelopeId.right(6)).toUtf8();
+      msg.plaintextCacheCiphertext =
+          QString("[Encrypted envelope %1]").arg(env.envelopeId.right(kConversationIdSuffixLength)).toUtf8();
     }
-    bool isSelfDm = false;
+    bool is_self_dm = false;
     if (env.conversationId == state->selectedConversationId) {
-      isSelfDm = state->selectedConversationIsSelfDm;
+      is_self_dm = state->selectedConversationIsSelfDm;
     } else {
       // Only needed for correct "self DM" device-based outgoing.
-      isSelfDm = serviceCall([&services, &env, &myUserId]() {
-        auto *conversationsApi = services->conversationsApi();
-        if (conversationsApi == nullptr) {
+      is_self_dm = service_call([&services, &env, &my_user_id]() {
+        auto *conversations_api = services->conversationsApi();
+        if (conversations_api == nullptr) {
           return false;
         }
-        const auto conv = conversationsApi->conversation(env.conversationId);
+        const auto conv = conversations_api->conversation(env.conversationId);
         return conv.ok && conv.data.has_value() && conv.data->type == 0 && conv.data->peerUserId.has_value() &&
-               myUserId == *conv.data->peerUserId;
+               my_user_id == *conv.data->peerUserId;
       });
     }
 
     // Outgoing rule:
     // - normal conversations: any message from my user -> right bubble
     // - DM with self: only messages from *this device* -> right bubble
-    msg.isOutgoing = isSelfDm ? (!myDeviceId.isEmpty() && env.senderDeviceId == myDeviceId)
-                              : (!myUserId.isEmpty() && senderUserId == myUserId);
+    msg.isOutgoing = is_self_dm ? (!my_device_id.isEmpty() && env.senderDeviceId == my_device_id)
+                                : (!my_user_id.isEmpty() && sender_user_id == my_user_id);
 
     // Author label: store username for UI (not UUID).
     if (msg.isOutgoing) {
-      msg.senderUserId = myUsername.isEmpty() ? QStringLiteral("me") : myUsername;
+      msg.senderUserId = my_username.isEmpty() ? QStringLiteral("me") : my_username;
     } else {
-      msg.senderUserId = serviceCall([&services, senderUserId]() {
+      msg.senderUserId = service_call([&services, sender_user_id]() {
         auto *directory = services->directoryApi();
-        QString display = senderUserId;
-        if (directory != nullptr && !senderUserId.isEmpty()) {
-          const auto resolved = directory->userById(senderUserId);
+        QString display = sender_user_id;
+        if (directory != nullptr && !sender_user_id.isEmpty()) {
+          const auto resolved = directory->userById(sender_user_id);
           if (resolved.ok && resolved.data.has_value() && !resolved.data->username.isEmpty()) {
             display = resolved.data->username;
           }
@@ -267,17 +278,17 @@ int Application::run(int argc, char **argv) {
       });
     }
 
-    serviceCall([&services, msg]() {
-      if (auto *messagesRepo = services->messagesRepository(); messagesRepo != nullptr) {
-        messagesRepo->upsertMessage(msg);
+    service_call([&services, msg]() {
+      if (auto *messages_repo = services->messagesRepository(); messages_repo != nullptr) {
+        messages_repo->upsertMessage(msg);
       }
     });
 
     // Update currently open conversation view.
     if (env.conversationId == state->selectedConversationId) {
-      const auto messages = serviceCall([&services, conversationId = env.conversationId]() {
-        if (auto *messagesRepo = services->messagesRepository(); messagesRepo != nullptr) {
-          return messagesRepo->listConversationMessages(conversationId, 200);
+      const auto messages = service_call([&services, conversation_id = env.conversationId]() {
+        if (auto *messages_repo = services->messagesRepository(); messages_repo != nullptr) {
+          return messages_repo->listConversationMessages(conversation_id, kConversationMessagesPageSize);
         }
         return QVector<domain::Message>{};
       });
@@ -285,7 +296,7 @@ int Application::run(int argc, char **argv) {
     }
 
     // Bump chat ordering in UI quickly.
-    auto list = serviceCall([&services]() { return services->conversationService()->conversations(); });
+    auto list = service_call([&services]() { return services->conversationService()->conversations(); });
     const auto now = QDateTime::currentDateTime();
     for (auto &c : list) {
       if (c.conversationId == env.conversationId) {
@@ -300,64 +311,65 @@ int Application::run(int argc, char **argv) {
     window.setConversations(list);
   };
 
-  QObject::connect(realtime, &network::RealtimeSocket::envelopeReceived, &window, applyEnvelope);
-  QObject::connect(realtime, &network::RealtimeSocket::membershipChanged, &window, [&, services](const QString &, int) {
-    if (!servicesInitialized) {
-      return;
-    }
-    const auto refreshed = serviceCall([&services]() {
-      const bool ok = services->conversationService()->refreshConversations();
-      const auto list = ok ? services->conversationService()->conversations() : QVector<domain::Conversation>{};
-      return std::pair<bool, QVector<domain::Conversation>>{ok, list};
-    });
-    if (refreshed.first) {
-      window.setConversations(refreshed.second);
-    }
-  });
-  QObject::connect(realtime, &network::RealtimeSocket::socketError, &window, [&](const QString &) {
-    if (servicesInitialized) {
-      pollTimer.start();
+  QObject::connect(&realtime, &network::RealtimeSocket::envelopeReceived, &window, apply_envelope);
+  QObject::connect(
+      &realtime, &network::RealtimeSocket::membershipChanged, &window, [&, services](const QString &, int) {
+        if (!services_initialized) {
+          return;
+        }
+        const auto refreshed = service_call([&services]() {
+          const bool ok = services->conversationService()->refreshConversations();
+          const auto list = ok ? services->conversationService()->conversations() : QVector<domain::Conversation>{};
+          return std::pair<bool, QVector<domain::Conversation>>{ok, list};
+        });
+        if (refreshed.first) {
+          window.setConversations(refreshed.second);
+        }
+      });
+  QObject::connect(&realtime, &network::RealtimeSocket::socketError, &window, [&](const QString &) {
+    if (services_initialized) {
+      poll_timer.start();
     }
   });
 
-  QObject::connect(&pollTimer, &QTimer::timeout, &window, [&, services, state]() {
-    if (!servicesInitialized)
+  QObject::connect(&poll_timer, &QTimer::timeout, &window, [&, services, state]() {
+    if (!services_initialized)
       return;
-    const auto batch = serviceCall([&services, cursor = pendingCursor]() {
+    const auto batch = service_call([&services, cursor = pending_cursor]() {
       auto *api = services->conversationsApi();
       if (api == nullptr) {
         return network::ApiResult<network::EnvelopeBatchResponse>{};
       }
-      return api->pendingEnvelopes(100, cursor);
+      return api->pendingEnvelopes(kPendingEnvelopesPageSize, cursor);
     });
     if (!batch.ok || !batch.data.has_value()) {
       return;
     }
-    pendingCursor = batch.data->nextCursor;
+    pending_cursor = batch.data->nextCursor;
     for (const auto &env : batch.data->envelopes) {
-      applyEnvelope(env);
+      apply_envelope(env);
     }
   });
 
   QObject::connect(&window, &ui::shell::MainWindow::serverBaseUrlReady, [&, services, state](const QString &baseUrl) {
-    if (servicesInitialized) {
+    if (services_initialized) {
       return;
     }
 
-    const auto init = serviceCall([&services, &appDataPath, &baseUrl, &vaultPassword]() {
-      QString initError;
-      const bool ok = services->initialize(appDataPath, baseUrl, vaultPassword, &initError);
-      return std::pair<bool, QString>{ok, initError};
+    const auto init = service_call([&services, &app_data_path, &baseUrl, &vault_password]() {
+      QString init_error;
+      const bool ok = services->initialize(app_data_path, baseUrl, vault_password, &init_error);
+      return std::pair<bool, QString>{ok, init_error};
     });
     if (!init.first) {
       QMessageBox::critical(&window, "Vox startup failure", init.second);
       return;
     }
-    servicesInitialized = true;
+    services_initialized = true;
     state->serverBaseUrl = baseUrl;
 
     state->refreshConversations = [&, services, state]() {
-      const auto refreshed = serviceCall([&services]() {
+      const auto refreshed = service_call([&services]() {
         const bool ok = services->conversationService()->refreshConversations();
         const auto list = ok ? services->conversationService()->conversations() : QVector<domain::Conversation>{};
         return std::pair<bool, QVector<domain::Conversation>>{ok, list};
@@ -373,10 +385,10 @@ int Application::run(int argc, char **argv) {
     QObject::connect(
         &window, &ui::shell::MainWindow::conversationSelected, [&, services, state](const QString &conversationId) {
           state->selectedConversationId = conversationId;
-          const auto messages = serviceCall([&services, &conversationId]() {
-            auto *messagesRepo = services->messagesRepository();
-            if (messagesRepo != nullptr) {
-              return messagesRepo->listConversationMessages(conversationId, 100);
+          const auto messages = service_call([&services, &conversationId]() {
+            auto *messages_repo = services->messagesRepository();
+            if (messages_repo != nullptr) {
+              return messages_repo->listConversationMessages(conversationId, kPendingEnvelopesPageSize);
             }
             return QVector<domain::Message>{};
           });
@@ -386,10 +398,10 @@ int Application::run(int argc, char **argv) {
     QObject::connect(&window,
                      &ui::shell::MainWindow::loginSubmitted,
                      [&, services, state](const QString &username, const QString &passwordDerived) {
-                       const bool loggedIn = serviceCall([&services, &username, &passwordDerived]() {
+                       const bool logged_in = service_call([&services, &username, &passwordDerived]() {
                          return services->authService()->login(username, passwordDerived);
                        });
-                       if (!loggedIn) {
+                       if (!logged_in) {
                          QMessageBox::warning(&window, "Login failed", "Invalid credentials or server error");
                          return;
                        }
@@ -400,16 +412,16 @@ int Application::run(int argc, char **argv) {
                        }
 
                        // Start realtime after auth.
-                       const auto ctx = serviceCall([&services]() { return services->authService()->context(); });
+                       const auto ctx = service_call([&services]() { return services->authService()->context(); });
                        if (ctx.has_value()) {
-                         realtime->connectAndAuthenticate(wsUrlForBaseUrl(state->serverBaseUrl), ctx->accessToken);
+                         realtime.connectAndAuthenticate(WsUrlForBaseUrl(state->serverBaseUrl), ctx->accessToken);
                        }
                      });
 
     QObject::connect(&window,
                      &ui::shell::MainWindow::registerSubmitted,
                      [&, services, state](const QString &username, const QString &passwordDerived) {
-                       const bool registered = serviceCall([&services, &username, &passwordDerived]() {
+                       const bool registered = service_call([&services, &username, &passwordDerived]() {
                          return services->authService()->registerUser(username, passwordDerived);
                        });
                        if (!registered) {
@@ -423,14 +435,14 @@ int Application::run(int argc, char **argv) {
                          state->refreshConversations();
                        }
 
-                       const auto ctx = serviceCall([&services]() { return services->authService()->context(); });
+                       const auto ctx = service_call([&services]() { return services->authService()->context(); });
                        if (ctx.has_value()) {
-                         realtime->connectAndAuthenticate(wsUrlForBaseUrl(state->serverBaseUrl), ctx->accessToken);
+                         realtime.connectAndAuthenticate(WsUrlForBaseUrl(state->serverBaseUrl), ctx->accessToken);
                        }
                      });
 
     QObject::connect(&window, &ui::shell::MainWindow::sendMessageSubmitted, [&, services, state](const QString &text) {
-      const auto auth = serviceCall([&services]() { return services->authService()->context(); });
+      const auto auth = service_call([&services]() { return services->authService()->context(); });
       if (!auth.has_value()) {
         QMessageBox::information(&window, "Not authenticated", "Please login before sending messages.");
         return;
@@ -441,35 +453,35 @@ int Application::run(int argc, char **argv) {
         return;
       }
 
-      const auto convDto = serviceCall([&services, conversationId = state->selectedConversationId]() {
-        auto *conversationsApi = services->conversationsApi();
-        if (conversationsApi == nullptr) {
+      const auto conv_dto = service_call([&services, conversation_id = state->selectedConversationId]() {
+        auto *conversations_api = services->conversationsApi();
+        if (conversations_api == nullptr) {
           return network::ApiResult<network::ConversationSummaryDto>{};
         }
-        return conversationsApi->conversation(conversationId);
+        return conversations_api->conversation(conversation_id);
       });
-      const bool isChannel = convDto.ok && convDto.data.has_value() && convDto.data->type == 2;
-      const QString myRole = (convDto.ok && convDto.data.has_value()) ? convDto.data->myRole.toLower() : QString{};
-      const bool canSendInChannel = (myRole == "owner" || myRole == "admin");
-      if (isChannel && !canSendInChannel) {
+      const bool is_channel = conv_dto.ok && conv_dto.data.has_value() && conv_dto.data->type == 2;
+      const QString my_role = (conv_dto.ok && conv_dto.data.has_value()) ? conv_dto.data->myRole.toLower() : QString{};
+      const bool can_send_in_channel = (my_role == "owner" || my_role == "admin");
+      if (is_channel && !can_send_in_channel) {
         QMessageBox::information(&window, "Read-only", "You don't have permission to post to this channel.");
         return;
       }
 
-      const QString ciphertext = encryptForTransport(text);
-      const bool ok = serviceCall(
-          [&services, conversationId = state->selectedConversationId, deviceId = auth->deviceId, text, ciphertext]() {
+      const QString ciphertext = EncryptForTransport(text);
+      const bool ok = service_call(
+          [&services, conversation_id = state->selectedConversationId, device_id = auth->deviceId, text, ciphertext]() {
             auto *sender = services->messageSendService();
-            return (sender != nullptr) && sender->sendMessage(conversationId, deviceId, text, ciphertext);
+            return (sender != nullptr) && sender->sendMessage(conversation_id, device_id, text, ciphertext);
           });
       if (!ok) {
         QMessageBox::warning(&window, "Send failed", "Message queued for retry.");
       }
 
       // Immediate UI update (messages + chat ordering) even if server list is stale.
-      const auto messages = serviceCall([&services, conversationId = state->selectedConversationId]() {
-        if (auto *messagesRepo = services->messagesRepository(); messagesRepo != nullptr) {
-          return messagesRepo->listConversationMessages(conversationId, 200);
+      const auto messages = service_call([&services, conversation_id = state->selectedConversationId]() {
+        if (auto *messages_repo = services->messagesRepository(); messages_repo != nullptr) {
+          return messages_repo->listConversationMessages(conversation_id, kConversationMessagesPageSize);
         }
         return QVector<domain::Message>{};
       });
@@ -478,7 +490,7 @@ int Application::run(int argc, char **argv) {
         // refresh to incorporate server changes + title enrichment
         state->refreshConversations();
       }
-      auto list = serviceCall([&services]() { return services->conversationService()->conversations(); });
+      auto list = service_call([&services]() { return services->conversationService()->conversations(); });
       const auto now = QDateTime::currentDateTime();
       for (auto &c : list) {
         if (c.conversationId == state->selectedConversationId) {
@@ -493,16 +505,16 @@ int Application::run(int argc, char **argv) {
       window.setConversations(list);
     });
 
-    const bool restored = serviceCall([&services]() { return services->authService()->restoreSession(); });
+    const bool restored = service_call([&services]() { return services->authService()->restoreSession(); });
     if (restored) {
       window.showMain();
       if (state->refreshConversations) {
         state->refreshConversations();
       }
 
-      const auto ctx = serviceCall([&services]() { return services->authService()->context(); });
+      const auto ctx = service_call([&services]() { return services->authService()->context(); });
       if (ctx.has_value()) {
-        realtime->connectAndAuthenticate(wsUrlForBaseUrl(state->serverBaseUrl), ctx->accessToken);
+        realtime.connectAndAuthenticate(WsUrlForBaseUrl(state->serverBaseUrl), ctx->accessToken);
       }
     } else {
       window.showWelcome();
@@ -510,18 +522,18 @@ int Application::run(int argc, char **argv) {
   });
 
   QObject::connect(&window, &ui::shell::MainWindow::logoutRequested, [&, services, state]() {
-    if (servicesInitialized) {
-      serviceCall([&services]() { services->authService()->logout(); });
+    if (services_initialized) {
+      service_call([&services]() { services->authService()->logout(); });
     }
     state->selectedConversationId.clear();
-    realtime->close();
-    pollTimer.stop();
+    realtime.close();
+    poll_timer.stop();
     window.showWelcome();
   });
 
   QObject::connect(
       &window, &ui::shell::MainWindow::conversationSelected, [&, services, state](const QString &conversationId) {
-        if (!servicesInitialized) {
+        if (!services_initialized) {
           return;
         }
         state->selectedConversationId = conversationId;
@@ -531,64 +543,65 @@ int Application::run(int argc, char **argv) {
           QString title;
           int type{0};
           bool selectedConversationIsSelfDm{false};
-          QVector<domain::Message> messages;
+          QVector<domain::Message> messages{};
         };
 
-        const auto loaded = serviceCall([&services, &conversationId]() {
+        const auto loaded = service_call([&services, &conversationId]() {
           SelectionResult out;
 
-          auto *conversationsApi = services->conversationsApi();
-          if (conversationsApi == nullptr) {
+          auto *conversations_api = services->conversationsApi();
+          if (conversations_api == nullptr) {
             return out;
           }
 
-          const auto summary = conversationsApi->conversation(conversationId);
+          const auto summary = conversations_api->conversation(conversationId);
           if (summary.ok && summary.data.has_value()) {
             out.hasSummary = true;
             out.title = summary.data->title;
             out.type = summary.data->type;
 
             const auto auth = services->authService()->context();
-            const QString myUserId = auth.has_value() ? auth->userId : QString{};
+            const QString my_user_id = auth.has_value() ? auth->userId : QString{};
             out.selectedConversationIsSelfDm = (summary.data->type == 0 && summary.data->peerUserId.has_value() &&
-                                                *summary.data->peerUserId == myUserId);
+                                                *summary.data->peerUserId == my_user_id);
           }
 
-          const auto batch = conversationsApi->conversationEnvelopes(conversationId, 100);
+          const auto batch = conversations_api->conversationEnvelopes(conversationId, kPendingEnvelopesPageSize);
           if (batch.ok && batch.data.has_value()) {
             const auto auth = services->authService()->context();
-            const QString myDeviceId = auth.has_value() ? auth->deviceId : QString{};
-            const QString myUserId = auth.has_value() ? auth->userId : QString{};
-            const QString myUsername = auth.has_value() ? auth->username : QString{};
-            const bool isSelfDm = out.selectedConversationIsSelfDm;
+            const QString my_device_id = auth.has_value() ? auth->deviceId : QString{};
+            const QString my_user_id = auth.has_value() ? auth->userId : QString{};
+            const QString my_username = auth.has_value() ? auth->username : QString{};
+            const bool is_self_dm = out.selectedConversationIsSelfDm;
 
             for (const auto &env : batch.data->envelopes) {
               domain::Message msg;
               msg.messageId = env.envelopeId;
               msg.conversationId = env.conversationId;
-              const QString senderUserId = env.senderUserId;
+              const QString sender_user_id = env.senderUserId;
               msg.senderDeviceId = env.senderDeviceId;
-              msg.serverReceivedAtMs = env.serverTimestamp * 1000;
+              msg.serverReceivedAtMs = env.serverTimestamp * kMillisPerSecond;
               msg.clientCreatedAtMs = msg.serverReceivedAtMs;
               msg.ciphertextBlob = env.ciphertext.toUtf8();
 
-              const auto plaintext = decryptForUi(env.ciphertext);
+              const auto plaintext = DecryptForUi(env.ciphertext);
               if (plaintext.has_value()) {
                 msg.plaintextCacheCiphertext = plaintext->toUtf8();
               } else {
-                msg.plaintextCacheCiphertext = QString("[Encrypted envelope %1]").arg(env.envelopeId.right(6)).toUtf8();
+                msg.plaintextCacheCiphertext =
+                    QString("[Encrypted envelope %1]").arg(env.envelopeId.right(kConversationIdSuffixLength)).toUtf8();
               }
 
-              msg.isOutgoing = isSelfDm ? (!myDeviceId.isEmpty() && env.senderDeviceId == myDeviceId)
-                                        : (!myUserId.isEmpty() && senderUserId == myUserId);
+              msg.isOutgoing = is_self_dm ? (!my_device_id.isEmpty() && env.senderDeviceId == my_device_id)
+                                          : (!my_user_id.isEmpty() && sender_user_id == my_user_id);
 
               if (msg.isOutgoing) {
-                msg.senderUserId = myUsername.isEmpty() ? QStringLiteral("me") : myUsername;
+                msg.senderUserId = my_username.isEmpty() ? QStringLiteral("me") : my_username;
               } else {
                 auto *directory = services->directoryApi();
-                QString display = senderUserId;
-                if (directory != nullptr && !senderUserId.isEmpty()) {
-                  const auto resolved = directory->userById(senderUserId);
+                QString display = sender_user_id;
+                if (directory != nullptr && !sender_user_id.isEmpty()) {
+                  const auto resolved = directory->userById(sender_user_id);
                   if (resolved.ok && resolved.data.has_value() && !resolved.data->username.isEmpty()) {
                     display = resolved.data->username;
                   }
@@ -596,14 +609,14 @@ int Application::run(int argc, char **argv) {
                 msg.senderUserId = display;
               }
 
-              if (auto *messagesRepo = services->messagesRepository(); messagesRepo != nullptr) {
-                messagesRepo->upsertMessage(msg);
+              if (auto *messages_repo = services->messagesRepository(); messages_repo != nullptr) {
+                messages_repo->upsertMessage(msg);
               }
             }
           }
 
-          if (auto *messagesRepo = services->messagesRepository(); messagesRepo != nullptr) {
-            out.messages = messagesRepo->listConversationMessages(conversationId, 100);
+          if (auto *messages_repo = services->messagesRepository(); messages_repo != nullptr) {
+            out.messages = messages_repo->listConversationMessages(conversationId, kPendingEnvelopesPageSize);
           }
           return out;
         });
@@ -620,7 +633,7 @@ int Application::run(int argc, char **argv) {
       });
 
   QObject::connect(&window, &ui::shell::MainWindow::createDmRequested, [&, services, state](const QString &username) {
-    if (!servicesInitialized) {
+    if (!services_initialized) {
       QMessageBox::information(&window, "Not connected", "Connect to a server first.");
       return;
     }
@@ -632,11 +645,11 @@ int Application::run(int argc, char **argv) {
       QString conversationId;
     };
 
-    const auto result = serviceCall([&services, &username]() {
+    const auto result = service_call([&services, &username]() {
       CreateDmResult out;
       auto *directory = services->directoryApi();
-      auto *conversationsApi = services->conversationsApi();
-      if (directory == nullptr || conversationsApi == nullptr) {
+      auto *conversations_api = services->conversationsApi();
+      if (directory == nullptr || conversations_api == nullptr) {
         out.apiAvailable = false;
         return out;
       }
@@ -650,7 +663,7 @@ int Application::run(int argc, char **argv) {
       vox::network::ConversationCreateRequest req;
       req.type = "dm";
       req.peerUserId = resolved.data->userId;
-      const auto created = conversationsApi->createConversation(req);
+      const auto created = conversations_api->createConversation(req);
       if (!created.ok || !created.data.has_value()) {
         return out;
       }
@@ -673,17 +686,17 @@ int Application::run(int argc, char **argv) {
       return;
     }
 
-    const QString newConversationId = result.conversationId;
-    state->selectedConversationId = newConversationId;
+    const QString new_conversation_id = result.conversationId;
+    state->selectedConversationId = new_conversation_id;
 
     if (state->refreshConversations) {
       state->refreshConversations();
     }
 
-    const auto messages = serviceCall([&services, &newConversationId]() {
-      auto *messagesRepo = services->messagesRepository();
-      if (messagesRepo != nullptr) {
-        return messagesRepo->listConversationMessages(newConversationId, 100);
+    const auto messages = service_call([&services, &new_conversation_id]() {
+      auto *messages_repo = services->messagesRepository();
+      if (messages_repo != nullptr) {
+        return messages_repo->listConversationMessages(new_conversation_id, kPendingEnvelopesPageSize);
       }
       return QVector<domain::Message>{};
     });
@@ -692,7 +705,7 @@ int Application::run(int argc, char **argv) {
 
   QObject::connect(
       &window, &ui::shell::MainWindow::createGroupRequested, [&, services, state](const QStringList &usernames) {
-        if (!servicesInitialized) {
+        if (!services_initialized) {
           QMessageBox::information(&window, "Not connected", "Connect to a server first.");
           return;
         }
@@ -705,7 +718,7 @@ int Application::run(int argc, char **argv) {
           QString conversationId;
         };
 
-        const auto result = serviceCall([&services, usernames]() {
+        const auto result = service_call([&services, usernames]() {
           CreateGroupResult out;
           const auto auth = services->authService()->context();
           if (!auth.has_value()) {
@@ -714,28 +727,28 @@ int Application::run(int argc, char **argv) {
           out.authenticated = true;
 
           auto *directory = services->directoryApi();
-          auto *conversationsApi = services->conversationsApi();
-          if (directory == nullptr || conversationsApi == nullptr) {
+          auto *conversations_api = services->conversationsApi();
+          if (directory == nullptr || conversations_api == nullptr) {
             out.apiAvailable = false;
             return out;
           }
 
-          QVector<QString> memberIds;
-          memberIds.push_back(auth->userId);
+          QVector<QString> member_ids;
+          member_ids.push_back(auth->userId);
           for (const auto &u : usernames) {
             const auto resolved = directory->userByUsername(u);
             if (!resolved.ok || !resolved.data.has_value()) {
               out.error = QString("Could not resolve '%1'").arg(u);
               return out;
             }
-            memberIds.push_back(resolved.data->userId);
+            member_ids.push_back(resolved.data->userId);
           }
-          memberIds.removeDuplicates();
+          member_ids.removeDuplicates();
 
           vox::network::ConversationCreateRequest req;
           req.type = "group";
-          req.members = memberIds;
-          const auto created = conversationsApi->createConversation(req);
+          req.members = member_ids;
+          const auto created = conversations_api->createConversation(req);
           if (!created.ok || !created.data.has_value()) {
             out.error = "Could not create group.";
             return out;
@@ -764,7 +777,7 @@ int Application::run(int argc, char **argv) {
         state->selectedConversationId = result.conversationId;
         if (state->refreshConversations) {
           state->refreshConversations();
-          QTimer::singleShot(1500, &window, [state]() {
+          QTimer::singleShot(kUiRefreshDelayMs, &window, [state]() {
             if (state->refreshConversations)
               state->refreshConversations();
           });
@@ -773,7 +786,7 @@ int Application::run(int argc, char **argv) {
 
   QObject::connect(
       &window, &ui::shell::MainWindow::createChannelRequested, [&, services, state](const QStringList &adminUsernames) {
-        if (!servicesInitialized) {
+        if (!services_initialized) {
           QMessageBox::information(&window, "Not connected", "Connect to a server first.");
           return;
         }
@@ -786,7 +799,7 @@ int Application::run(int argc, char **argv) {
           QString conversationId;
         };
 
-        const auto result = serviceCall([&services, adminUsernames]() {
+        const auto result = service_call([&services, adminUsernames]() {
           CreateChannelResult out;
           const auto auth = services->authService()->context();
           if (!auth.has_value()) {
@@ -795,28 +808,28 @@ int Application::run(int argc, char **argv) {
           out.authenticated = true;
 
           auto *directory = services->directoryApi();
-          auto *conversationsApi = services->conversationsApi();
-          if (directory == nullptr || conversationsApi == nullptr) {
+          auto *conversations_api = services->conversationsApi();
+          if (directory == nullptr || conversations_api == nullptr) {
             out.apiAvailable = false;
             return out;
           }
 
-          QVector<QString> adminIds;
-          adminIds.push_back(auth->userId);
+          QVector<QString> admin_ids;
+          admin_ids.push_back(auth->userId);
           for (const auto &u : adminUsernames) {
             const auto resolved = directory->userByUsername(u);
             if (!resolved.ok || !resolved.data.has_value()) {
               out.error = QString("Could not resolve '%1'").arg(u);
               return out;
             }
-            adminIds.push_back(resolved.data->userId);
+            admin_ids.push_back(resolved.data->userId);
           }
-          adminIds.removeDuplicates();
+          admin_ids.removeDuplicates();
 
           vox::network::ConversationCreateRequest req;
           req.type = "channel";
-          req.admins = adminIds;
-          const auto created = conversationsApi->createConversation(req);
+          req.admins = admin_ids;
+          const auto created = conversations_api->createConversation(req);
           if (!created.ok || !created.data.has_value()) {
             out.error = "Could not create channel.";
             return out;
@@ -845,7 +858,7 @@ int Application::run(int argc, char **argv) {
         state->selectedConversationId = result.conversationId;
         if (state->refreshConversations) {
           state->refreshConversations();
-          QTimer::singleShot(1500, &window, [state]() {
+          QTimer::singleShot(kUiRefreshDelayMs, &window, [state]() {
             if (state->refreshConversations)
               state->refreshConversations();
           });
@@ -854,7 +867,7 @@ int Application::run(int argc, char **argv) {
 
   QObject::connect(
       &window, &ui::shell::MainWindow::subscribeChannelRequested, [&, services, state](const QString &conversationId) {
-        if (!servicesInitialized) {
+        if (!services_initialized) {
           QMessageBox::information(&window, "Not connected", "Connect to a server first.");
           return;
         }
@@ -864,14 +877,14 @@ int Application::run(int argc, char **argv) {
           bool subscribed{false};
         };
 
-        const auto result = serviceCall([&services, &conversationId]() {
+        const auto result = service_call([&services, &conversationId]() {
           SubscribeResult out;
-          auto *conversationsApi = services->conversationsApi();
-          if (conversationsApi == nullptr) {
+          auto *conversations_api = services->conversationsApi();
+          if (conversations_api == nullptr) {
             out.apiAvailable = false;
             return out;
           }
-          out.subscribed = conversationsApi->subscribe(conversationId).ok;
+          out.subscribed = conversations_api->subscribe(conversationId).ok;
           return out;
         });
 
@@ -887,12 +900,12 @@ int Application::run(int argc, char **argv) {
         state->selectedConversationId = conversationId;
         if (state->refreshConversations) {
           state->refreshConversations();
-          QTimer::singleShot(1500, &window, [state]() {
+          QTimer::singleShot(kUiRefreshDelayMs, &window, [state]() {
             if (state->refreshConversations) {
               state->refreshConversations();
             }
           });
-          QTimer::singleShot(3500, &window, [state]() {
+          QTimer::singleShot(kUiRefreshRetryDelayMs, &window, [state]() {
             if (state->refreshConversations) {
               state->refreshConversations();
             }
@@ -902,15 +915,17 @@ int Application::run(int argc, char **argv) {
 
   window.showWelcome();
   window.show();
-  const int exitCode = QApplication::exec();
+  const int exit_code = QApplication::exec();
 
-  serviceCall([&services]() { services.reset(); });
+  service_call([&services]() { services.reset(); });
+  QObject *const ctx_ptr = service_context.get();
+  std::unique_ptr<QObject> context_to_destroy = std::move(service_context);
   QMetaObject::invokeMethod(
-      serviceContext, [serviceContext]() { delete serviceContext; }, Qt::BlockingQueuedConnection);
-  serviceThread.quit();
-  serviceThread.wait();
+      ctx_ptr, [ctx = std::move(context_to_destroy)]() mutable { ctx.reset(); }, Qt::BlockingQueuedConnection);
+  service_thread.quit();
+  service_thread.wait();
 
-  return exitCode;
+  return exit_code;
 }
 
 } // namespace vox::app

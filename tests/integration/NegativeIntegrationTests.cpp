@@ -8,7 +8,7 @@
 
 namespace {
 
-vox::network::NetworkAccess buildNetwork(FakeVoxServer &server) {
+vox::network::NetworkAccess BuildNetwork(FakeVoxServer &server) {
   vox::network::NetworkAccess network("http://fake");
   network.setCustomHandler([&](const QString &method,
                                const QString &path,
@@ -19,7 +19,7 @@ vox::network::NetworkAccess buildNetwork(FakeVoxServer &server) {
   return network;
 }
 
-vox::network::RegisterRequest minimalRegisterRequest() {
+vox::network::RegisterRequest MinimalRegisterRequest() {
   vox::network::RegisterRequest request;
   request.username = "alice";
   request.passwordDerivedValue = "pwd";
@@ -38,7 +38,7 @@ vox::network::RegisterRequest minimalRegisterRequest() {
 
 TEST_F(ProjectIntegrationTestSuite, ConversationsRequireBearerTokenNegative) {
   FakeVoxServer server;
-  auto network = buildNetwork(server);
+  auto network = BuildNetwork(server);
 
   vox::network::ConversationsApi conversations(network);
   const auto result = conversations.listConversations();
@@ -49,7 +49,7 @@ TEST_F(ProjectIntegrationTestSuite, ConversationsRequireBearerTokenNegative) {
 
 TEST_F(ProjectIntegrationTestSuite, RefreshFailsWithInvalidTokenNegative) {
   FakeVoxServer server;
-  auto network = buildNetwork(server);
+  auto network = BuildNetwork(server);
 
   vox::network::AuthApi auth(network);
 
@@ -60,41 +60,47 @@ TEST_F(ProjectIntegrationTestSuite, RefreshFailsWithInvalidTokenNegative) {
 
 TEST_F(ProjectIntegrationTestSuite, SendFailsWhenServerQueueIsFullNegative) {
   FakeVoxServer server;
-  auto network = buildNetwork(server);
+  auto network = BuildNetwork(server);
 
   vox::network::AuthApi auth(network);
   vox::network::ConversationsApi conversations(network);
 
-  const auto registered = auth.registerUser(minimalRegisterRequest());
+  const auto registered = auth.registerUser(MinimalRegisterRequest());
   ASSERT_TRUE(registered.ok);
   ASSERT_TRUE(registered.data.has_value());
+  if (!registered.data.has_value()) {
+    return;
+  }
 
   network.setBearerToken(registered.data->accessToken);
 
   server.setFailNextSend(true);
 
-  vox::network::SendEnvelopeRequest sendRequest;
-  sendRequest.deviceId = "dev_desktop";
-  sendRequest.conversationId = "conv_1";
-  sendRequest.ciphertext = "ciphertext_payload";
-  sendRequest.envelopeId = "env_client_1";
-  sendRequest.envelopeType = 0;
+  vox::network::SendEnvelopeRequest send_request;
+  send_request.deviceId = "dev_desktop";
+  send_request.conversationId = "conv_1";
+  send_request.ciphertext = "ciphertext_payload";
+  send_request.envelopeId = "env_client_1";
+  send_request.envelopeType = 0;
 
-  const auto sent = conversations.sendEnvelope(sendRequest);
+  const auto sent = conversations.sendEnvelope(send_request);
   EXPECT_FALSE(sent.ok);
   EXPECT_EQ(sent.statusCode, 503);
 }
 
 TEST_F(ProjectIntegrationTestSuite, UnauthorizedAfterServerSideInvalidationNegative) {
   FakeVoxServer server;
-  auto network = buildNetwork(server);
+  auto network = BuildNetwork(server);
 
   vox::network::AuthApi auth(network);
   vox::network::ConversationsApi conversations(network);
 
-  const auto registered = auth.registerUser(minimalRegisterRequest());
+  const auto registered = auth.registerUser(MinimalRegisterRequest());
   ASSERT_TRUE(registered.ok);
   ASSERT_TRUE(registered.data.has_value());
+  if (!registered.data.has_value()) {
+    return;
+  }
 
   network.setBearerToken(registered.data->accessToken);
   server.setForceUnauthorized(true);

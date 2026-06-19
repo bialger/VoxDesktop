@@ -1,6 +1,7 @@
 #include "app/ServiceLocator.hpp"
 
 #include "crypto/CryptoHelpers.hpp"
+#include "crypto/CryptoSizes.hpp"
 #include "crypto/HkdfSha256.hpp"
 #include "storage/Migrations.hpp"
 
@@ -41,10 +42,10 @@ bool ServiceLocator::initialize(const QString &appDataPath,
     return false;
   }
 
-  QString migrationError;
-  if (!storage::Migrations::run(m_database->database(), &migrationError)) {
+  QString migration_error;
+  if (!storage::Migrations::run(m_database->database(), &migration_error)) {
     if (error != nullptr) {
-      *error = QString("Database migration failed: %1").arg(migrationError);
+      *error = QString("Database migration failed: %1").arg(migration_error);
     }
     return false;
   }
@@ -75,10 +76,10 @@ bool ServiceLocator::initialize(const QString &appDataPath,
   m_trustRepository = std::make_unique<storage::SqlTrustRepository>(db);
 
   QSettings settings;
-  QString deviceId = settings.value("vox/device_id").toString();
-  if (deviceId.isEmpty()) {
-    deviceId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    settings.setValue("vox/device_id", deviceId);
+  QString device_id = settings.value("vox/device_id").toString();
+  if (device_id.isEmpty()) {
+    device_id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    settings.setValue("vox/device_id", device_id);
   }
 
   m_authService = std::make_unique<services::AuthService>(*m_authApi,
@@ -88,7 +89,7 @@ bool ServiceLocator::initialize(const QString &appDataPath,
                                                           *m_identityStore,
                                                           *m_prekeyManager,
                                                           "default",
-                                                          deviceId);
+                                                          device_id);
 
   m_serverDiscoveryService = std::make_unique<services::ServerDiscoveryService>(*m_networkAccess);
   m_conversationService =
@@ -98,13 +99,13 @@ bool ServiceLocator::initialize(const QString &appDataPath,
   m_attachmentService = std::make_unique<services::AttachmentService>(*m_attachmentsApi, *m_fileStore);
   m_syncService = std::make_unique<services::SyncService>(*m_syncApi, *m_syncRepository);
 
-  auto searchKey = m_vault->loadSecret("search_index_key");
-  if (!searchKey.has_value()) {
-    const QByteArray seed = crypto::CryptoHelpers::randomBytes(32);
-    searchKey = crypto::hkdfSha256(seed, "vox-search", "vox/search-index-key", 32);
-    m_vault->storeSecret("search_index_key", *searchKey);
+  auto search_key = m_vault->loadSecret("search_index_key");
+  if (!search_key.has_value()) {
+    const QByteArray seed = crypto::CryptoHelpers::randomBytes(crypto::kChaCha20KeyBytes);
+    search_key = crypto::hkdfSha256(seed, "vox-search", "vox/search-index-key", crypto::kChaCha20KeyBytes);
+    m_vault->storeSecret("search_index_key", *search_key);
   }
-  m_searchService = std::make_unique<services::SearchService>(*m_searchRepository, *searchKey);
+  m_searchService = std::make_unique<services::SearchService>(*m_searchRepository, *search_key);
 
   m_notificationService = std::make_unique<services::NotificationService>(false);
 

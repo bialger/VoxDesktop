@@ -14,7 +14,7 @@ public:
   std::optional<QByteArray> keyForEpoch(const QString &conversationId, int epoch) const;
 
   QByteArray rotateEpoch(const QString &conversationId);
-  bool importEpochKey(const QString &conversationId, int epoch, QByteArray key);
+  bool importEpochKey(const QString &conversationId, int epoch, const QByteArray &key);
 
 private:
   struct EpochState {

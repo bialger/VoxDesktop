@@ -6,7 +6,7 @@ namespace vox::domain {
 namespace {
 
 template<typename Enum>
-std::optional<Enum> fromTable(const QHash<QString, Enum> &table, const QString &key) {
+std::optional<Enum> FromTable(const QHash<QString, Enum> &table, const QString &key) {
   const auto it = table.find(key);
   if (it == table.end()) {
     return std::nullopt;
@@ -90,13 +90,13 @@ std::optional<DeliveryState> deliveryStateFromString(const QString &state) {
       {"ReadLocal", DeliveryState::ReadLocal},
       {"Failed", DeliveryState::Failed},
   };
-  return fromTable(kMap, state);
+  return FromTable(kMap, state);
 }
 
 std::optional<ConversationType> conversationTypeFromString(const QString &type) {
   static const QHash<QString, ConversationType> kMap{
       {"dm", ConversationType::Dm}, {"group", ConversationType::Group}, {"channel", ConversationType::Channel}};
-  return fromTable(kMap, type);
+  return FromTable(kMap, type);
 }
 
 std::optional<TrustLevel> trustLevelFromString(const QString &state) {
@@ -104,13 +104,13 @@ std::optional<TrustLevel> trustLevelFromString(const QString &state) {
                                                {"unverified", TrustLevel::Unverified},
                                                {"verified", TrustLevel::Verified},
                                                {"blocked", TrustLevel::Blocked}};
-  return fromTable(kMap, state);
+  return FromTable(kMap, state);
 }
 
 std::optional<ContentKind> contentKindFromString(const QString &kind) {
   static const QHash<QString, ContentKind> kMap{
       {"text", ContentKind::Text}, {"attachment", ContentKind::Attachment}, {"system", ContentKind::System}};
-  return fromTable(kMap, kind);
+  return FromTable(kMap, kind);
 }
 
 } // namespace vox::domain

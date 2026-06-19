@@ -6,7 +6,7 @@ DevicesModel::DevicesModel(QObject *parent) : QAbstractListModel(parent) {
 }
 
 int DevicesModel::rowCount(const QModelIndex &parent) const {
-  return parent.isValid() ? 0 : m_devices.size();
+  return parent.isValid() ? 0 : static_cast<int>(m_devices.size());
 }
 
 QVariant DevicesModel::data(const QModelIndex &index, int role) const {

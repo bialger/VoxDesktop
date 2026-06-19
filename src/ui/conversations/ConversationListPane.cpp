@@ -7,24 +7,28 @@
 #include <QStringList>
 #include <QVBoxLayout>
 
+#include <memory>
+
 namespace vox::ui::conversations {
 namespace {
 
+constexpr int kLayoutMarginPx = 8;
+
 class ChatListProxyModel final : public QSortFilterProxyModel {
 public:
-  void setTypeFilter(std::optional<domain::ConversationType> type) {
-    m_typeFilter = type;
+  void SetTypeFilter(std::optional<domain::ConversationType> type) {
+    m_typeFilter_ = type;
     invalidateFilter();
   }
 
 protected:
-  bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override {
+  [[nodiscard]] bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override {
     const QModelIndex idx = sourceModel()->index(sourceRow, 0, sourceParent);
-    const QString typeStr = idx.data(ConversationListModel::TypeRole).toString();
+    const QString type_str = idx.data(ConversationListModel::TypeRole).toString();
 
-    if (m_typeFilter.has_value()) {
-      const QString expected = domain::toString(*m_typeFilter);
-      if (typeStr != expected) {
+    if (m_typeFilter_.has_value()) {
+      const QString expected = domain::toString(*m_typeFilter_);
+      if (type_str != expected) {
         return false;
       }
     }
@@ -35,16 +39,16 @@ protected:
     }
 
     const QString title = idx.data(ConversationListModel::TitleRole).toString();
-    const QString typeLabel = idx.data(ConversationListModel::TypeLabelRole).toString();
+    const QString type_label = idx.data(ConversationListModel::TypeLabelRole).toString();
 
-    return title.contains(needle, Qt::CaseInsensitive) || typeLabel.contains(needle, Qt::CaseInsensitive);
+    return title.contains(needle, Qt::CaseInsensitive) || type_label.contains(needle, Qt::CaseInsensitive);
   }
 
 private:
-  std::optional<domain::ConversationType> m_typeFilter;
+  std::optional<domain::ConversationType> m_typeFilter_;
 };
 
-QStringList splitUsernames(QString raw) {
+QStringList SplitUsernames(QString raw) {
   raw.replace('\n', ',');
   raw.replace('\r', ',');
   const auto parts = raw.split(',', Qt::SkipEmptyParts);
@@ -62,66 +66,66 @@ QStringList splitUsernames(QString raw) {
 
 } // namespace
 
-ConversationListPane::ConversationListPane(QWidget *parent) : QWidget(parent) {
-  auto *layout = new QVBoxLayout(this);
-  layout->setContentsMargins(8, 8, 8, 8);
+ConversationListPane::ConversationListPane(QWidget *parent) :
+    QWidget(parent), m_tabBar(new QTabBar(this)), m_searchEdit(new QLineEdit(this)), m_addButton(new QToolButton(this)),
+    m_model(new ConversationListModel(this)), m_listView(new QListView(this)) {
+  auto layout = std::make_unique<QVBoxLayout>();
+  layout->setContentsMargins(kLayoutMarginPx, kLayoutMarginPx, kLayoutMarginPx, kLayoutMarginPx);
 
-  m_tabBar = new QTabBar(this);
   m_tabBar->addTab("DMs");
   m_tabBar->addTab("Groups");
   m_tabBar->addTab("Channels");
   m_tabBar->setExpanding(false);
 
-  auto *topRow = new QHBoxLayout;
-  m_searchEdit = new QLineEdit(this);
+  auto top_row = std::make_unique<QHBoxLayout>();
+
   m_searchEdit->setPlaceholderText("Search conversations");
 
-  m_addButton = new QToolButton(this);
   m_addButton->setText("+");
   m_addButton->setToolTip("Add conversation");
   m_addButton->setPopupMode(QToolButton::InstantPopup);
 
-  auto *menu = new QMenu(m_addButton);
-  auto *dmAction = menu->addAction("New DM (by username)");
-  auto *groupAction = menu->addAction("New Group (usernames)");
-  auto *channelAction = menu->addAction("New Channel (admins)");
-  auto *subscribeAction = menu->addAction("Subscribe to channel (by UUID)");
-  m_addButton->setMenu(menu);
+  auto menu = std::make_unique<QMenu>(m_addButton);
+  auto *dm_action = menu->addAction("New DM (by username)");
+  auto *group_action = menu->addAction("New Group (usernames)");
+  auto *channel_action = menu->addAction("New Channel (admins)");
+  auto *subscribe_action = menu->addAction("Subscribe to channel (by UUID)");
+  m_addButton->setMenu(menu.release());
 
-  topRow->addWidget(m_searchEdit, 1);
-  topRow->addWidget(m_addButton);
+  top_row->addWidget(m_searchEdit, 1);
+  top_row->addWidget(m_addButton);
 
-  m_model = new ConversationListModel(this);
-  auto *proxy = new ChatListProxyModel;
+  auto proxy = std::make_unique<ChatListProxyModel>();
   proxy->setSourceModel(m_model);
   proxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
   proxy->setFilterRegularExpression(QRegularExpression{});
-  proxy->setTypeFilter(domain::ConversationType::Dm);
-  m_proxyModel = proxy;
+  proxy->SetTypeFilter(domain::ConversationType::Dm);
+  ChatListProxyModel *const proxy_model = proxy.get();
+  m_proxyModel = proxy.release();
+  m_proxyModel->setParent(this);
 
-  m_listView = new QListView(this);
   m_listView->setModel(m_proxyModel);
 
   layout->addWidget(m_tabBar);
-  layout->addLayout(topRow);
+  layout->addLayout(top_row.release());
   layout->addWidget(m_listView, 1);
 
-  connect(m_searchEdit, &QLineEdit::textChanged, this, [proxy](const QString &text) {
-    proxy->setFilterRegularExpression(
+  connect(m_searchEdit, &QLineEdit::textChanged, this, [proxy_model](const QString &text) {
+    proxy_model->setFilterRegularExpression(
         QRegularExpression(QRegularExpression::escape(text), QRegularExpression::CaseInsensitiveOption));
   });
 
-  connect(m_tabBar, &QTabBar::currentChanged, this, [proxy](int idx) {
+  connect(m_tabBar, &QTabBar::currentChanged, this, [proxy_model](int idx) {
     if (idx == 0) {
-      proxy->setTypeFilter(domain::ConversationType::Dm);
+      proxy_model->SetTypeFilter(domain::ConversationType::Dm);
     } else if (idx == 1) {
-      proxy->setTypeFilter(domain::ConversationType::Group);
+      proxy_model->SetTypeFilter(domain::ConversationType::Group);
     } else {
-      proxy->setTypeFilter(domain::ConversationType::Channel);
+      proxy_model->SetTypeFilter(domain::ConversationType::Channel);
     }
   });
 
-  connect(dmAction, &QAction::triggered, this, [this]() {
+  connect(dm_action, &QAction::triggered, this, [this]() {
     bool ok = false;
     const QString username = QInputDialog::getText(this, "New DM", "Username:", QLineEdit::Normal, {}, &ok).trimmed();
     if (!ok || username.isEmpty()) {
@@ -130,21 +134,21 @@ ConversationListPane::ConversationListPane(QWidget *parent) : QWidget(parent) {
     emit createDmRequested(username);
   });
 
-  connect(groupAction, &QAction::triggered, this, [this]() {
+  connect(group_action, &QAction::triggered, this, [this]() {
     bool ok = false;
     const QString raw =
         QInputDialog::getMultiLineText(this, "New Group", "Usernames (comma/newline separated):", {}, &ok).trimmed();
     if (!ok || raw.isEmpty()) {
       return;
     }
-    const auto usernames = splitUsernames(raw);
+    const auto usernames = SplitUsernames(raw);
     if (usernames.isEmpty()) {
       return;
     }
     emit createGroupRequested(usernames);
   });
 
-  connect(channelAction, &QAction::triggered, this, [this]() {
+  connect(channel_action, &QAction::triggered, this, [this]() {
     bool ok = false;
     const QString raw = QInputDialog::getMultiLineText(
                             this, "New Channel", "Admin usernames (optional; comma/newline separated):", {}, &ok)
@@ -152,11 +156,11 @@ ConversationListPane::ConversationListPane(QWidget *parent) : QWidget(parent) {
     if (!ok) {
       return;
     }
-    const auto usernames = splitUsernames(raw);
+    const auto usernames = SplitUsernames(raw);
     emit createChannelRequested(usernames);
   });
 
-  connect(subscribeAction, &QAction::triggered, this, [this]() {
+  connect(subscribe_action, &QAction::triggered, this, [this]() {
     bool ok = false;
     const QString raw =
         QInputDialog::getText(this, "Subscribe to channel", "Channel UUID (conv_...):", QLineEdit::Normal, {}, &ok)
@@ -166,15 +170,16 @@ ConversationListPane::ConversationListPane(QWidget *parent) : QWidget(parent) {
     }
     const QRegularExpression re(R"(conv_[A-Za-z0-9_-]+)");
     const auto match = re.match(raw);
-    const QString conversationId = match.hasMatch() ? match.captured(0) : raw;
-    emit subscribeChannelRequested(conversationId);
+    const QString conversation_id = match.hasMatch() ? match.captured(0) : raw;
+    emit subscribeChannelRequested(conversation_id);
   });
 
   connect(m_listView, &QListView::clicked, this, [this](const QModelIndex &proxyIndex) {
-    const QModelIndex sourceIndex = m_proxyModel->mapToSource(proxyIndex);
-    const QString conversationId = sourceIndex.data(ConversationListModel::ConversationIdRole).toString();
-    emit conversationSelected(conversationId);
+    const QModelIndex source_index = m_proxyModel->mapToSource(proxyIndex);
+    const QString conversation_id = source_index.data(ConversationListModel::ConversationIdRole).toString();
+    emit conversationSelected(conversation_id);
   });
+  setLayout(layout.release());
 }
 
 ConversationListModel *ConversationListPane::model() {

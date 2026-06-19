@@ -43,10 +43,10 @@ void Database::close() {
   if (m_database.isValid()) {
     m_database.close();
   }
-  const QString connectionName = m_connectionName;
+  const QString connection_name = m_connectionName;
   m_database = {};
-  if (!connectionName.isEmpty() && QSqlDatabase::contains(connectionName)) {
-    QSqlDatabase::removeDatabase(connectionName);
+  if (!connection_name.isEmpty() && QSqlDatabase::contains(connection_name)) {
+    QSqlDatabase::removeDatabase(connection_name);
   }
   m_connectionName.clear();
 }

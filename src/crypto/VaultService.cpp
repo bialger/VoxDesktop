@@ -1,6 +1,7 @@
 #include "crypto/VaultService.hpp"
 
 #include "crypto/CryptoHelpers.hpp"
+#include "crypto/CryptoSizes.hpp"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -12,11 +13,11 @@
 namespace vox::crypto {
 namespace {
 
-QByteArray toB64(const QByteArray &bytes) {
+QByteArray ToB64(const QByteArray &bytes) {
   return bytes.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals);
 }
 
-QByteArray fromB64(const QByteArray &bytes) {
+QByteArray FromB64(const QByteArray &bytes) {
   return QByteArray::fromBase64(bytes, QByteArray::Base64UrlEncoding);
 }
 
@@ -42,8 +43,8 @@ bool VaultService::unlockWithPassword(const QString &password) {
     return false;
   }
 
-  m_vaultKey = CryptoHelpers::argon2idKdf(password.toUtf8(), m_salt, kVaultOpsLimit, kVaultMemLimit, 32);
-  if (m_vaultKey.size() != 32) {
+  m_vaultKey = CryptoHelpers::argon2idKdf(password.toUtf8(), m_salt, kVaultOpsLimit, kVaultMemLimit, kChaCha20KeyBytes);
+  if (m_vaultKey.size() != kChaCha20KeyBytes) {
     return false;
   }
 
@@ -64,12 +65,12 @@ void VaultService::lock() {
   m_unlocked = false;
 }
 
-bool VaultService::storeSecret(const QString &name, QByteArray value) {
+bool VaultService::storeSecret(const QString &name, const QByteArray &value) {
   if (!m_unlocked || name.isEmpty() || value.isEmpty()) {
     return false;
   }
 
-  m_secrets.insert(name, std::move(value));
+  m_secrets.insert(name, value);
   return saveVault();
 }
 
@@ -105,12 +106,12 @@ bool VaultService::loadExistingVault(const QString &password) {
   const auto doc = QJsonDocument::fromJson(file.readAll());
   const auto root = doc.object();
 
-  m_salt = fromB64(root.value("salt").toString().toUtf8());
-  const QByteArray nonce = fromB64(root.value("nonce").toString().toUtf8());
-  const QByteArray ciphertext = fromB64(root.value("ciphertext").toString().toUtf8());
+  m_salt = FromB64(root.value("salt").toString().toUtf8());
+  const QByteArray nonce = FromB64(root.value("nonce").toString().toUtf8());
+  const QByteArray ciphertext = FromB64(root.value("ciphertext").toString().toUtf8());
 
-  m_vaultKey = CryptoHelpers::argon2idKdf(password.toUtf8(), m_salt, kVaultOpsLimit, kVaultMemLimit, 32);
-  if (m_vaultKey.size() != 32) {
+  m_vaultKey = CryptoHelpers::argon2idKdf(password.toUtf8(), m_salt, kVaultOpsLimit, kVaultMemLimit, kChaCha20KeyBytes);
+  if (m_vaultKey.size() != kChaCha20KeyBytes) {
     return false;
   }
 
@@ -120,12 +121,12 @@ bool VaultService::loadExistingVault(const QString &password) {
     return false;
   }
 
-  const auto secretsDoc = QJsonDocument::fromJson(*decrypted);
-  const auto secretsObj = secretsDoc.object();
+  const auto secrets_doc = QJsonDocument::fromJson(*decrypted);
+  const auto secrets_obj = secrets_doc.object();
 
   m_secrets.clear();
-  for (auto it = secretsObj.begin(); it != secretsObj.end(); ++it) {
-    m_secrets.insert(it.key(), fromB64(it.value().toString().toUtf8()));
+  for (auto it = secrets_obj.begin(); it != secrets_obj.end(); ++it) {
+    m_secrets.insert(it.key(), FromB64(it.value().toString().toUtf8()));
   }
 
   m_unlocked = true;
@@ -133,16 +134,16 @@ bool VaultService::loadExistingVault(const QString &password) {
 }
 
 bool VaultService::saveVault() {
-  if (!m_unlocked || m_vaultKey.size() != 32 || m_salt.size() != crypto_pwhash_SALTBYTES) {
+  if (!m_unlocked || m_vaultKey.size() != kChaCha20KeyBytes || m_salt.size() != crypto_pwhash_SALTBYTES) {
     return false;
   }
 
-  QJsonObject payloadObj;
+  QJsonObject payload_obj;
   for (auto it = m_secrets.begin(); it != m_secrets.end(); ++it) {
-    payloadObj.insert(it.key(), QString::fromUtf8(toB64(it.value())));
+    payload_obj.insert(it.key(), QString::fromUtf8(ToB64(it.value())));
   }
 
-  const QByteArray payload = QJsonDocument(payloadObj).toJson(QJsonDocument::Compact);
+  const QByteArray payload = QJsonDocument(payload_obj).toJson(QJsonDocument::Compact);
   const QByteArray nonce = CryptoHelpers::randomBytes(crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
   if (nonce.size() != crypto_aead_xchacha20poly1305_ietf_NPUBBYTES) {
     return false;
@@ -155,9 +156,9 @@ bool VaultService::saveVault() {
 
   QJsonObject root;
   root.insert("version", 1);
-  root.insert("salt", QString::fromUtf8(toB64(m_salt)));
-  root.insert("nonce", QString::fromUtf8(toB64(nonce)));
-  root.insert("ciphertext", QString::fromUtf8(toB64(ciphertext)));
+  root.insert("salt", QString::fromUtf8(ToB64(m_salt)));
+  root.insert("nonce", QString::fromUtf8(ToB64(nonce)));
+  root.insert("ciphertext", QString::fromUtf8(ToB64(ciphertext)));
 
   QSaveFile out(m_vaultPath);
   if (!out.open(QIODevice::WriteOnly)) {

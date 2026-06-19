@@ -1,6 +1,7 @@
 #include "crypto/SenderKeyManager.hpp"
 
 #include "crypto/CryptoHelpers.hpp"
+#include "crypto/CryptoSizes.hpp"
 
 namespace vox::crypto {
 
@@ -9,35 +10,35 @@ int SenderKeyManager::currentEpoch(const QString &conversationId) const {
 }
 
 std::optional<QByteArray> SenderKeyManager::keyForEpoch(const QString &conversationId, int epoch) const {
-  const auto conversationIt = m_conversations.find(conversationId);
-  if (conversationIt == m_conversations.end()) {
+  const auto conversation_it = m_conversations.find(conversationId);
+  if (conversation_it == m_conversations.end()) {
     return std::nullopt;
   }
 
-  const auto keyIt = conversationIt->keys.find(epoch);
-  if (keyIt == conversationIt->keys.end()) {
+  const auto key_it = conversation_it->keys.find(epoch);
+  if (key_it == conversation_it->keys.end()) {
     return std::nullopt;
   }
 
-  return keyIt.value();
+  return key_it.value();
 }
 
 QByteArray SenderKeyManager::rotateEpoch(const QString &conversationId) {
   auto &state = m_conversations[conversationId];
   ++state.currentEpoch;
-  const QByteArray newKey = CryptoHelpers::randomBytes(32);
-  state.keys.insert(state.currentEpoch, newKey);
-  return newKey;
+  const QByteArray new_key = CryptoHelpers::randomBytes(kChaCha20KeyBytes);
+  state.keys.insert(state.currentEpoch, new_key);
+  return new_key;
 }
 
-bool SenderKeyManager::importEpochKey(const QString &conversationId, int epoch, QByteArray key) {
-  if (epoch <= 0 || key.size() != 32) {
+bool SenderKeyManager::importEpochKey(const QString &conversationId, int epoch, const QByteArray &key) {
+  if (epoch <= 0 || key.size() != kChaCha20KeyBytes) {
     return false;
   }
 
   auto &state = m_conversations[conversationId];
   state.currentEpoch = std::max(state.currentEpoch, epoch);
-  state.keys.insert(epoch, std::move(key));
+  state.keys.insert(epoch, key);
   return true;
 }
 

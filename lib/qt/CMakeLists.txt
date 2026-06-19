@@ -27,12 +27,25 @@ set(VOX_QT_REQUIRED_COMPONENTS
 )
 
 function(vox_download_and_extract archive_url archive_path source_dir)
+    # Validate source completeness before reusing an existing extracted tree.
+    # Some interrupted extractions leave CMakeLists.txt present, but miss modules
+    # like src/network, which later breaks feature evaluation (e.g. udpsocket).
+    set(qt_source_sentinel_network "${source_dir}/src/network/CMakeLists.txt")
+    set(qt_source_sentinel_sql "${source_dir}/src/sql/CMakeLists.txt")
+
     if(NOT EXISTS "${archive_path}")
         message(STATUS "Downloading Qt source archive: ${archive_url}")
         file(DOWNLOAD "${archive_url}" "${archive_path}" SHOW_PROGRESS)
     endif()
 
-    if(NOT EXISTS "${source_dir}/CMakeLists.txt")
+    if(NOT EXISTS "${source_dir}/CMakeLists.txt" OR
+       NOT EXISTS "${qt_source_sentinel_network}" OR
+       NOT EXISTS "${qt_source_sentinel_sql}")
+        if(EXISTS "${source_dir}")
+            message(STATUS "Removing incomplete Qt source tree: ${source_dir}")
+            file(REMOVE_RECURSE "${source_dir}")
+        endif()
+
         message(STATUS "Extracting: ${archive_path}")
         execute_process(
             COMMAND "${CMAKE_COMMAND}" -E tar xvf "${archive_path}"
@@ -43,6 +56,12 @@ function(vox_download_and_extract archive_url archive_path source_dir)
         if(NOT extract_result EQUAL 0)
             message(FATAL_ERROR "Failed to extract Qt archive: ${archive_path}")
         endif()
+    endif()
+
+    if(NOT EXISTS "${qt_source_sentinel_network}" OR NOT EXISTS "${qt_source_sentinel_sql}")
+        message(FATAL_ERROR
+            "Extracted Qt source tree is incomplete at '${source_dir}'. "
+            "Delete '${archive_path}' and reconfigure to force a clean re-download.")
     endif()
 endfunction()
 

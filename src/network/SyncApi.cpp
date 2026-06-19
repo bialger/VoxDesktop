@@ -31,8 +31,8 @@ ApiResult<SyncKeyBundleDto> SyncApi::getKeyBundle() const {
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -51,9 +51,9 @@ VoidResult SyncApi::putKeyBundle(const SyncKeyBundleDto &bundle) const {
   if (!result.ok) {
     const auto object = JsonCodec::parseObject(response.body, &result.error);
     if (object.has_value()) {
-      const auto apiError = parseApiError(*object);
-      if (apiError.has_value()) {
-        result.error = apiError->message;
+      const auto api_error = parseApiError(*object);
+      if (api_error.has_value()) {
+        result.error = api_error->message;
       }
     }
   }
@@ -81,9 +81,9 @@ ApiResult<SyncChangesResponse> SyncApi::changes(const QString &collection, const
 
   if (response.ok()) {
     SyncChangesResponse parsed;
-    const auto recordsArray = object->value("records").toArray();
-    parsed.records.reserve(recordsArray.size());
-    for (const auto &entry : recordsArray) {
+    const auto records_array = object->value("records").toArray();
+    parsed.records.reserve(records_array.size());
+    for (const auto &entry : records_array) {
       const auto record = parseSyncRecordDto(entry.toObject());
       if (!record.has_value()) {
         result.error = "Invalid sync record entry";
@@ -100,8 +100,8 @@ ApiResult<SyncChangesResponse> SyncApi::changes(const QString &collection, const
     return result;
   }
 
-  const auto apiError = parseApiError(*object);
-  result.error = apiError.has_value() ? apiError->message : response.errorMessage;
+  const auto api_error = parseApiError(*object);
+  result.error = api_error.has_value() ? api_error->message : response.errorMessage;
   return result;
 }
 
@@ -116,9 +116,9 @@ VoidResult SyncApi::putRecord(const SyncRecordDto &record) const {
   if (!result.ok) {
     const auto object = JsonCodec::parseObject(response.body, &result.error);
     if (object.has_value()) {
-      const auto apiError = parseApiError(*object);
-      if (apiError.has_value()) {
-        result.error = apiError->message;
+      const auto api_error = parseApiError(*object);
+      if (api_error.has_value()) {
+        result.error = api_error->message;
       }
     }
   }
@@ -136,9 +136,9 @@ VoidResult SyncApi::deleteRecord(const QString &collection, const QString &recor
   if (!result.ok) {
     const auto object = JsonCodec::parseObject(response.body, &result.error);
     if (object.has_value()) {
-      const auto apiError = parseApiError(*object);
-      if (apiError.has_value()) {
-        result.error = apiError->message;
+      const auto api_error = parseApiError(*object);
+      if (api_error.has_value()) {
+        result.error = api_error->message;
       }
     }
   }

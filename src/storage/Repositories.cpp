@@ -4,20 +4,89 @@
 #include <QSqlError>
 #include <QSqlQuery>
 
+#include <cstdint>
+
 namespace vox::storage {
 namespace {
 
-bool exec(QSqlQuery &query) {
+bool Exec(QSqlQuery &query) {
   return query.exec();
 }
 
-qint64 nowMs() {
+qint64 NowMs() {
   return QDateTime::currentMSecsSinceEpoch();
 }
 
+enum AccountColumn : std::uint8_t {
+  kAccountId = 0,
+  kServerId = 1,
+  kUserId = 2,
+  kUsername = 3,
+  kActiveDeviceId = 4,
+  kRefreshTokenCiphertext = 5,
+  kLastLoginMs = 6,
+};
+
+enum ConversationColumn : std::uint8_t {
+  kConversationId = 0,
+  kConversationServerId = 1,
+  kConversationType = 2,
+  kTitleCiphertext = 3,
+  kLastMessageAtMs = 4,
+  kMuteState = 5,
+  kPinRank = 6,
+  kEpoch = 7,
+};
+
+enum MessageColumn : std::uint8_t {
+  kMessageId = 0,
+  kMessageConversationId = 1,
+  kSenderUserId = 2,
+  kSenderDeviceId = 3,
+  kServerSeq = 4,
+  kClientCreatedAtMs = 5,
+  kServerReceivedAtMs = 6,
+  kContentKind = 7,
+  kCiphertextBlob = 8,
+  kPlaintextCacheCiphertext = 9,
+  kDeliveryState = 10,
+  kIsOutgoing = 11,
+  kReplyToMessageId = 12,
+  kSenderKeyEpoch = 13,
+};
+
+enum DeviceColumn : std::uint8_t {
+  kDeviceId = 0,
+  kDeviceUserId = 1,
+  kDeviceServerId = 2,
+  kDeviceLabel = 3,
+  kIdentitySignPub = 4,
+  kIdentityDhPub = 5,
+  kLastSeenMs = 6,
+  kTrustState = 7,
+};
+
+enum SyncRecordColumn : std::uint8_t {
+  kSyncCollection = 0,
+  kSyncRecordId = 1,
+  kSyncVersion = 2,
+  kSyncCiphertext = 3,
+  kSyncUpdatedAtMs = 4,
+  kSyncTombstone = 5,
+};
+
+enum JobColumn : std::uint8_t {
+  kJobId = 0,
+  kJobType = 1,
+  kJobPayloadCiphertext = 2,
+  kJobState = 3,
+  kJobAttemptCount = 4,
+  kJobNextAttemptMs = 5,
+};
+
 } // namespace
 
-SqlAccountsRepository::SqlAccountsRepository(QSqlDatabase db) : m_db(std::move(db)) {
+SqlAccountsRepository::SqlAccountsRepository(const QSqlDatabase &db) : m_db(db) {
 }
 
 bool SqlAccountsRepository::upsertAccount(const domain::Account &account) {
@@ -37,7 +106,7 @@ bool SqlAccountsRepository::upsertAccount(const domain::Account &account) {
   query.addBindValue(account.activeDeviceId);
   query.addBindValue(account.refreshTokenCiphertext);
   query.addBindValue(account.lastLogin.toMSecsSinceEpoch());
-  return exec(query);
+  return Exec(query);
 }
 
 std::optional<domain::Account> SqlAccountsRepository::activeAccount() const {
@@ -49,13 +118,13 @@ std::optional<domain::Account> SqlAccountsRepository::activeAccount() const {
   }
 
   domain::Account account;
-  account.accountId = query.value(0).toString();
-  account.serverId = query.value(1).toString();
-  account.userId = query.value(2).toString();
-  account.username = query.value(3).toString();
-  account.activeDeviceId = query.value(4).toString();
-  account.refreshTokenCiphertext = query.value(5).toByteArray();
-  account.lastLogin = QDateTime::fromMSecsSinceEpoch(query.value(6).toLongLong());
+  account.accountId = query.value(kAccountId).toString();
+  account.serverId = query.value(kServerId).toString();
+  account.userId = query.value(kUserId).toString();
+  account.username = query.value(kUsername).toString();
+  account.activeDeviceId = query.value(kActiveDeviceId).toString();
+  account.refreshTokenCiphertext = query.value(kRefreshTokenCiphertext).toByteArray();
+  account.lastLogin = QDateTime::fromMSecsSinceEpoch(query.value(kLastLoginMs).toLongLong());
   return account;
 }
 
@@ -66,10 +135,10 @@ bool SqlAccountsRepository::deleteAccount(const QString &accountId) {
   QSqlQuery query(m_db);
   query.prepare("DELETE FROM accounts WHERE account_id = ?");
   query.addBindValue(accountId);
-  return exec(query);
+  return Exec(query);
 }
 
-SqlConversationsRepository::SqlConversationsRepository(QSqlDatabase db) : m_db(std::move(db)) {
+SqlConversationsRepository::SqlConversationsRepository(const QSqlDatabase &db) : m_db(db) {
 }
 
 bool SqlConversationsRepository::upsertConversation(const domain::Conversation &conversation) {
@@ -93,7 +162,7 @@ bool SqlConversationsRepository::upsertConversation(const domain::Conversation &
   query.addBindValue(conversation.pinRank);
   query.addBindValue(QByteArray{});
   query.addBindValue(conversation.epoch);
-  return exec(query);
+  return Exec(query);
 }
 
 QVector<domain::Conversation> SqlConversationsRepository::listConversations() const {
@@ -107,22 +176,22 @@ QVector<domain::Conversation> SqlConversationsRepository::listConversations() co
 
   while (query.next()) {
     domain::Conversation conversation;
-    conversation.conversationId = query.value(0).toString();
-    conversation.serverId = query.value(1).toString();
-    conversation.type =
-        domain::conversationTypeFromString(query.value(2).toString()).value_or(domain::ConversationType::Dm);
-    conversation.title = QString::fromUtf8(query.value(3).toByteArray());
-    conversation.lastMessageAt = QDateTime::fromMSecsSinceEpoch(query.value(4).toLongLong());
-    conversation.muted = query.value(5).toInt() != 0;
-    conversation.pinRank = query.value(6).toInt();
-    conversation.epoch = query.value(7).toInt();
+    conversation.conversationId = query.value(kConversationId).toString();
+    conversation.serverId = query.value(kConversationServerId).toString();
+    conversation.type = domain::conversationTypeFromString(query.value(kConversationType).toString())
+                            .value_or(domain::ConversationType::Dm);
+    conversation.title = QString::fromUtf8(query.value(kTitleCiphertext).toByteArray());
+    conversation.lastMessageAt = QDateTime::fromMSecsSinceEpoch(query.value(kLastMessageAtMs).toLongLong());
+    conversation.muted = query.value(kMuteState).toInt() != 0;
+    conversation.pinRank = query.value(kPinRank).toInt();
+    conversation.epoch = query.value(kEpoch).toInt();
     out.push_back(std::move(conversation));
   }
 
   return out;
 }
 
-SqlMessagesRepository::SqlMessagesRepository(QSqlDatabase db) : m_db(std::move(db)) {
+SqlMessagesRepository::SqlMessagesRepository(const QSqlDatabase &db) : m_db(db) {
 }
 
 bool SqlMessagesRepository::upsertMessage(const domain::Message &message) {
@@ -156,7 +225,7 @@ bool SqlMessagesRepository::upsertMessage(const domain::Message &message) {
   query.addBindValue(message.isOutgoing ? 1 : 0);
   query.addBindValue(message.replyToMessageId.value_or(QString{}));
   query.addBindValue(message.senderKeyEpoch);
-  return exec(query);
+  return Exec(query);
 }
 
 QVector<domain::Message> SqlMessagesRepository::listConversationMessages(const QString &conversationId,
@@ -171,36 +240,37 @@ QVector<domain::Message> SqlMessagesRepository::listConversationMessages(const Q
   query.addBindValue(conversationId);
   query.addBindValue(limit);
 
-  if (!exec(query)) {
+  if (!Exec(query)) {
     return out;
   }
 
   while (query.next()) {
     domain::Message message;
-    message.messageId = query.value(0).toString();
-    message.conversationId = query.value(1).toString();
-    message.senderUserId = query.value(2).toString();
-    message.senderDeviceId = query.value(3).toString();
-    message.serverSeq = query.value(4).toLongLong();
-    message.clientCreatedAtMs = query.value(5).toLongLong();
-    message.serverReceivedAtMs = query.value(6).toLongLong();
-    message.contentKind = domain::contentKindFromString(query.value(7).toString()).value_or(domain::ContentKind::Text);
-    message.ciphertextBlob = query.value(8).toByteArray();
-    message.plaintextCacheCiphertext = query.value(9).toByteArray();
+    message.messageId = query.value(kMessageId).toString();
+    message.conversationId = query.value(kMessageConversationId).toString();
+    message.senderUserId = query.value(kSenderUserId).toString();
+    message.senderDeviceId = query.value(kSenderDeviceId).toString();
+    message.serverSeq = query.value(kServerSeq).toLongLong();
+    message.clientCreatedAtMs = query.value(kClientCreatedAtMs).toLongLong();
+    message.serverReceivedAtMs = query.value(kServerReceivedAtMs).toLongLong();
+    message.contentKind =
+        domain::contentKindFromString(query.value(kContentKind).toString()).value_or(domain::ContentKind::Text);
+    message.ciphertextBlob = query.value(kCiphertextBlob).toByteArray();
+    message.plaintextCacheCiphertext = query.value(kPlaintextCacheCiphertext).toByteArray();
     message.deliveryState =
-        domain::deliveryStateFromString(query.value(10).toString()).value_or(domain::DeliveryState::Queued);
-    message.isOutgoing = query.value(11).toInt() != 0;
-    if (!query.value(12).toString().isEmpty()) {
-      message.replyToMessageId = query.value(12).toString();
+        domain::deliveryStateFromString(query.value(kDeliveryState).toString()).value_or(domain::DeliveryState::Queued);
+    message.isOutgoing = query.value(kIsOutgoing).toInt() != 0;
+    if (!query.value(kReplyToMessageId).toString().isEmpty()) {
+      message.replyToMessageId = query.value(kReplyToMessageId).toString();
     }
-    message.senderKeyEpoch = query.value(13).toInt();
+    message.senderKeyEpoch = query.value(kSenderKeyEpoch).toInt();
     out.push_back(std::move(message));
   }
 
   return out;
 }
 
-SqlDevicesRepository::SqlDevicesRepository(QSqlDatabase db) : m_db(std::move(db)) {
+SqlDevicesRepository::SqlDevicesRepository(const QSqlDatabase &db) : m_db(db) {
 }
 
 bool SqlDevicesRepository::upsertDevice(const domain::Device &device) {
@@ -222,7 +292,7 @@ bool SqlDevicesRepository::upsertDevice(const domain::Device &device) {
   query.addBindValue(QByteArray{});
   query.addBindValue(device.lastSeen.toMSecsSinceEpoch());
   query.addBindValue(domain::toString(device.trustLevel));
-  return exec(query);
+  return Exec(query);
 }
 
 QVector<domain::Device> SqlDevicesRepository::listDevicesByUser(const QString &userId) const {
@@ -233,27 +303,28 @@ QVector<domain::Device> SqlDevicesRepository::listDevicesByUser(const QString &u
       "last_seen_ms, trust_state FROM devices WHERE user_id = ? ORDER BY last_seen_ms DESC");
   query.addBindValue(userId);
 
-  if (!exec(query)) {
+  if (!Exec(query)) {
     return out;
   }
 
   while (query.next()) {
     domain::Device device;
-    device.deviceId = query.value(0).toString();
-    device.userId = query.value(1).toString();
-    device.serverId = query.value(2).toString();
-    device.label = query.value(3).toString();
-    device.identitySignPub = query.value(4).toByteArray();
-    device.identityDhPub = query.value(5).toByteArray();
-    device.lastSeen = QDateTime::fromMSecsSinceEpoch(query.value(6).toLongLong());
-    device.trustLevel = domain::trustLevelFromString(query.value(7).toString()).value_or(domain::TrustLevel::Unknown);
+    device.deviceId = query.value(kDeviceId).toString();
+    device.userId = query.value(kDeviceUserId).toString();
+    device.serverId = query.value(kDeviceServerId).toString();
+    device.label = query.value(kDeviceLabel).toString();
+    device.identitySignPub = query.value(kIdentitySignPub).toByteArray();
+    device.identityDhPub = query.value(kIdentityDhPub).toByteArray();
+    device.lastSeen = QDateTime::fromMSecsSinceEpoch(query.value(kLastSeenMs).toLongLong());
+    device.trustLevel =
+        domain::trustLevelFromString(query.value(kTrustState).toString()).value_or(domain::TrustLevel::Unknown);
     out.push_back(std::move(device));
   }
 
   return out;
 }
 
-SqlSyncRepository::SqlSyncRepository(QSqlDatabase db) : m_db(std::move(db)) {
+SqlSyncRepository::SqlSyncRepository(const QSqlDatabase &db) : m_db(db) {
 }
 
 bool SqlSyncRepository::upsertRecord(const domain::SyncRecord &record) {
@@ -269,7 +340,7 @@ bool SqlSyncRepository::upsertRecord(const domain::SyncRecord &record) {
   query.addBindValue(record.ciphertext);
   query.addBindValue(record.updatedAtMs);
   query.addBindValue(record.tombstone ? 1 : 0);
-  return exec(query);
+  return Exec(query);
 }
 
 QVector<domain::SyncRecord> SqlSyncRepository::listRecords(const QString &collection) const {
@@ -280,25 +351,25 @@ QVector<domain::SyncRecord> SqlSyncRepository::listRecords(const QString &collec
       "FROM sync_records WHERE collection = ? ORDER BY updated_at_ms DESC");
   query.addBindValue(collection);
 
-  if (!exec(query)) {
+  if (!Exec(query)) {
     return out;
   }
 
   while (query.next()) {
     domain::SyncRecord record;
-    record.collection = query.value(0).toString();
-    record.recordId = query.value(1).toString();
-    record.version = query.value(2).toInt();
-    record.ciphertext = query.value(3).toByteArray();
-    record.updatedAtMs = query.value(4).toLongLong();
-    record.tombstone = query.value(5).toInt() != 0;
+    record.collection = query.value(kSyncCollection).toString();
+    record.recordId = query.value(kSyncRecordId).toString();
+    record.version = query.value(kSyncVersion).toInt();
+    record.ciphertext = query.value(kSyncCiphertext).toByteArray();
+    record.updatedAtMs = query.value(kSyncUpdatedAtMs).toLongLong();
+    record.tombstone = query.value(kSyncTombstone).toInt() != 0;
     out.push_back(std::move(record));
   }
 
   return out;
 }
 
-SqlJobsRepository::SqlJobsRepository(QSqlDatabase db) : m_db(std::move(db)) {
+SqlJobsRepository::SqlJobsRepository(const QSqlDatabase &db) : m_db(db) {
 }
 
 bool SqlJobsRepository::enqueueJob(const QString &type, QByteArray payloadCiphertext, qint64 nextAttemptMs) {
@@ -307,9 +378,9 @@ bool SqlJobsRepository::enqueueJob(const QString &type, QByteArray payloadCipher
       "INSERT INTO jobs(type, payload_ciphertext, state, attempt_count, next_attempt_ms) "
       "VALUES(?, ?, 'queued', 0, ?)");
   query.addBindValue(type);
-  query.addBindValue(std::move(payloadCiphertext));
+  query.addBindValue(payloadCiphertext);
   query.addBindValue(nextAttemptMs);
-  return exec(query);
+  return Exec(query);
 }
 
 QVector<JobRecord> SqlJobsRepository::dueJobs(qint64 nowMs) const {
@@ -320,18 +391,18 @@ QVector<JobRecord> SqlJobsRepository::dueJobs(qint64 nowMs) const {
       "FROM jobs WHERE next_attempt_ms <= ? AND state != 'done' ORDER BY next_attempt_ms ASC");
   query.addBindValue(nowMs);
 
-  if (!exec(query)) {
+  if (!Exec(query)) {
     return out;
   }
 
   while (query.next()) {
     JobRecord job;
-    job.jobId = query.value(0).toLongLong();
-    job.type = query.value(1).toString();
-    job.payloadCiphertext = query.value(2).toByteArray();
-    job.state = query.value(3).toString();
-    job.attemptCount = query.value(4).toInt();
-    job.nextAttemptMs = query.value(5).toLongLong();
+    job.jobId = query.value(kJobId).toLongLong();
+    job.type = query.value(kJobType).toString();
+    job.payloadCiphertext = query.value(kJobPayloadCiphertext).toByteArray();
+    job.state = query.value(kJobState).toString();
+    job.attemptCount = query.value(kJobAttemptCount).toInt();
+    job.nextAttemptMs = query.value(kJobNextAttemptMs).toLongLong();
     out.push_back(std::move(job));
   }
 
@@ -344,10 +415,10 @@ bool SqlJobsRepository::markAttempt(qint64 jobId, bool success, qint64 nextAttem
   query.addBindValue(success ? "done" : "queued");
   query.addBindValue(nextAttemptMs);
   query.addBindValue(jobId);
-  return exec(query);
+  return Exec(query);
 }
 
-SqlSearchRepository::SqlSearchRepository(QSqlDatabase db) : m_db(std::move(db)) {
+SqlSearchRepository::SqlSearchRepository(const QSqlDatabase &db) : m_db(db) {
 }
 
 bool SqlSearchRepository::insertToken(const QString &conversationId,
@@ -360,9 +431,9 @@ bool SqlSearchRepository::insertToken(const QString &conversationId,
       "VALUES(?, ?, ?, ?)");
   query.addBindValue(conversationId);
   query.addBindValue(messageId);
-  query.addBindValue(std::move(tokenDigest));
+  query.addBindValue(tokenDigest);
   query.addBindValue(positionHint);
-  return exec(query);
+  return Exec(query);
 }
 
 QVector<QString> SqlSearchRepository::findMessagesByToken(const QByteArray &tokenDigest) const {
@@ -371,7 +442,7 @@ QVector<QString> SqlSearchRepository::findMessagesByToken(const QByteArray &toke
   query.prepare("SELECT message_id FROM search_tokens WHERE token_digest = ?");
   query.addBindValue(tokenDigest);
 
-  if (!exec(query)) {
+  if (!Exec(query)) {
     return out;
   }
 
@@ -381,7 +452,7 @@ QVector<QString> SqlSearchRepository::findMessagesByToken(const QByteArray &toke
   return out;
 }
 
-SqlTrustRepository::SqlTrustRepository(QSqlDatabase db) : m_db(std::move(db)) {
+SqlTrustRepository::SqlTrustRepository(const QSqlDatabase &db) : m_db(db) {
 }
 
 bool SqlTrustRepository::upsertTrust(const domain::DeviceFingerprint &trust) {
@@ -394,16 +465,16 @@ bool SqlTrustRepository::upsertTrust(const domain::DeviceFingerprint &trust) {
   query.addBindValue(trust.deviceId);
   query.addBindValue(trust.fingerprint);
   query.addBindValue(domain::toString(trust.trustLevel));
-  query.addBindValue(trust.verifiedAtMs > 0 ? trust.verifiedAtMs : nowMs());
+  query.addBindValue(trust.verifiedAtMs > 0 ? trust.verifiedAtMs : NowMs());
   query.addBindValue(QByteArray{});
-  return exec(query);
+  return Exec(query);
 }
 
 std::optional<domain::DeviceFingerprint> SqlTrustRepository::findTrust(const QString &deviceId) const {
   QSqlQuery query(m_db);
   query.prepare("SELECT device_id, fingerprint, trust_level, verified_at_ms FROM trusted_devices WHERE device_id = ?");
   query.addBindValue(deviceId);
-  if (!exec(query) || !query.next()) {
+  if (!Exec(query) || !query.next()) {
     return std::nullopt;
   }
 

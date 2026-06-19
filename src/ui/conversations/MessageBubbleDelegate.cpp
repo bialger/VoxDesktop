@@ -8,12 +8,29 @@
 namespace vox::ui::conversations {
 namespace {
 
-QColor bubbleColor(bool outgoing) {
-  return outgoing ? QColor(46, 125, 50) : QColor(40, 53, 147); // green / indigo-ish
+constexpr int kOutgoingBubbleRed = 46;
+constexpr int kOutgoingBubbleGreen = 125;
+constexpr int kOutgoingBubbleBlue = 50;
+constexpr int kIncomingBubbleRed = 40;
+constexpr int kIncomingBubbleGreen = 53;
+constexpr int kIncomingBubbleBlue = 147;
+constexpr int kTextColorChannel = 255;
+constexpr int kStampColorChannel = 230;
+constexpr int kBubbleMarginPx = 8;
+constexpr int kBubblePaddingPx = 10;
+constexpr int kBubbleCornerRadiusPx = 10;
+constexpr double kBubbleMaxWidthRatio = 0.70;
+constexpr int kBodyFontMinPointSize = 9;
+constexpr int kMetaFontMinPointSize = 8;
+constexpr int kTextMeasureHeightPx = 10'000;
+
+QColor BubbleColor(bool outgoing) {
+  return outgoing ? QColor(kOutgoingBubbleRed, kOutgoingBubbleGreen, kOutgoingBubbleBlue)
+                  : QColor(kIncomingBubbleRed, kIncomingBubbleGreen, kIncomingBubbleBlue);
 }
 
-QColor textColor() {
-  return QColor(255, 255, 255);
+QColor TextColor() {
+  return {kTextColorChannel, kTextColorChannel, kTextColorChannel};
 }
 
 } // namespace
@@ -37,74 +54,76 @@ void MessageBubbleDelegate::paint(QPainter *painter,
   const QDateTime ts = index.data(MessageListModel::TimestampRole).toDateTime().toLocalTime();
   const QString stamp = ts.toString("HH:mm");
 
-  const int margin = 8;
-  const int padding = 10;
-  const int radius = 10;
-  const int maxWidth = static_cast<int>(option.rect.width() * 0.70);
+  const int margin = kBubbleMarginPx;
+  const int padding = kBubblePaddingPx;
+  const int radius = kBubbleCornerRadiusPx;
+  const int max_width = static_cast<int>(option.rect.width() * kBubbleMaxWidthRatio);
 
-  QFont bodyFont = option.font;
-  bodyFont.setPointSize(std::max(9, bodyFont.pointSize()));
+  QFont body_font = option.font;
+  body_font.setPointSize(std::max(kBodyFontMinPointSize, body_font.pointSize()));
 
-  QFont metaFont = option.font;
-  metaFont.setPointSize(std::max(8, metaFont.pointSize() - 1));
+  QFont meta_font = option.font;
+  meta_font.setPointSize(std::max(kMetaFontMinPointSize, meta_font.pointSize() - 1));
 
-  QFontMetrics bodyFm(bodyFont);
-  QFontMetrics metaFm(metaFont);
+  QFontMetrics body_fm(body_font);
+  QFontMetrics meta_fm(meta_font);
 
   QString header;
   if (m_showAuthors && !outgoing && !author.isEmpty()) {
     header = author;
   }
 
-  const QRect textRect0(0, 0, maxWidth, 10'000);
-  const QRect headerRect = header.isEmpty() ? QRect() : metaFm.boundingRect(textRect0, Qt::TextWordWrap, header);
-  const QRect bodyRect = bodyFm.boundingRect(textRect0, Qt::TextWordWrap, body);
-  const QRect stampRect = metaFm.boundingRect(textRect0, Qt::TextSingleLine, stamp);
+  const QRect text_rect0(0, 0, max_width, kTextMeasureHeightPx);
+  const QRect header_rect = header.isEmpty() ? QRect() : meta_fm.boundingRect(text_rect0, Qt::TextWordWrap, header);
+  const QRect body_rect = body_fm.boundingRect(text_rect0, Qt::TextWordWrap, body);
+  const QRect stamp_rect = meta_fm.boundingRect(text_rect0, Qt::TextSingleLine, stamp);
 
-  int contentW = std::max({bodyRect.width(), headerRect.width(), stampRect.width()});
-  int contentH = bodyRect.height() + stampRect.height();
+  int content_w = std::max({body_rect.width(), header_rect.width(), stamp_rect.width()});
+  int content_h = body_rect.height() + stamp_rect.height();
   if (!header.isEmpty()) {
-    contentH += headerRect.height();
+    content_h += header_rect.height();
   }
 
-  const int bubbleW = contentW + padding * 2;
-  const int bubbleH = contentH + padding * 2;
+  const int bubble_w = content_w + padding * 2;
+  const int bubble_h = content_h + padding * 2;
 
   int x = option.rect.x() + margin;
   if (outgoing) {
-    x = option.rect.right() - margin - bubbleW;
+    x = option.rect.right() - margin - bubble_w;
   }
   const int y = option.rect.y() + margin;
 
-  QRect bubbleRect(x, y, bubbleW, bubbleH);
+  QRect bubble_rect(x, y, bubble_w, bubble_h);
 
   // background
   painter->setPen(Qt::NoPen);
-  painter->setBrush(bubbleColor(outgoing));
-  painter->drawRoundedRect(bubbleRect, radius, radius);
+  painter->setBrush(BubbleColor(outgoing));
+  painter->drawRoundedRect(bubble_rect, radius, radius);
 
   // text
-  painter->setPen(textColor());
-  int cursorY = bubbleRect.y() + padding;
-  const int textX = bubbleRect.x() + padding;
-  const int textW = bubbleRect.width() - padding * 2;
+  painter->setPen(TextColor());
+  int cursor_y = bubble_rect.y() + padding;
+  const int text_x = bubble_rect.x() + padding;
+  const int text_w = bubble_rect.width() - padding * 2;
 
-  painter->setFont(metaFont);
+  painter->setFont(meta_font);
   if (!header.isEmpty()) {
-    painter->drawText(
-        QRect(textX, cursorY, textW, headerRect.height()), Qt::TextSingleLine | Qt::AlignLeft | Qt::AlignTop, header);
-    cursorY += headerRect.height();
+    painter->drawText(QRect(text_x, cursor_y, text_w, header_rect.height()),
+                      Qt::TextSingleLine | Qt::AlignLeft | Qt::AlignTop,
+                      header);
+    cursor_y += header_rect.height();
   }
 
-  painter->setFont(bodyFont);
+  painter->setFont(body_font);
   painter->drawText(
-      QRect(textX, cursorY, textW, bodyRect.height()), Qt::TextWordWrap | Qt::AlignLeft | Qt::AlignTop, body);
-  cursorY += bodyRect.height();
+      QRect(text_x, cursor_y, text_w, body_rect.height()), Qt::TextWordWrap | Qt::AlignLeft | Qt::AlignTop, body);
+  cursor_y += body_rect.height();
 
-  painter->setFont(metaFont);
-  painter->setPen(QColor(230, 230, 230));
-  painter->drawText(
-      QRect(textX, cursorY, textW, stampRect.height()), Qt::TextSingleLine | Qt::AlignRight | Qt::AlignBottom, stamp);
+  painter->setFont(meta_font);
+  painter->setPen(QColor(kStampColorChannel, kStampColorChannel, kStampColorChannel));
+  painter->drawText(QRect(text_x, cursor_y, text_w, stamp_rect.height()),
+                    Qt::TextSingleLine | Qt::AlignRight | Qt::AlignBottom,
+                    stamp);
 
   painter->restore();
 }
@@ -116,39 +135,39 @@ QSize MessageBubbleDelegate::sizeHint(const QStyleOptionViewItem &option, const 
   const QDateTime ts = index.data(MessageListModel::TimestampRole).toDateTime().toLocalTime();
   const QString stamp = ts.toString("HH:mm");
 
-  const int margin = 8;
-  const int padding = 10;
-  const int maxWidth = static_cast<int>(option.rect.width() * 0.70);
+  const int margin = kBubbleMarginPx;
+  const int padding = kBubblePaddingPx;
+  const int max_width = static_cast<int>(option.rect.width() * kBubbleMaxWidthRatio);
 
-  QFont bodyFont = option.font;
-  bodyFont.setPointSize(std::max(9, bodyFont.pointSize()));
+  QFont body_font = option.font;
+  body_font.setPointSize(std::max(kBodyFontMinPointSize, body_font.pointSize()));
 
-  QFont metaFont = option.font;
-  metaFont.setPointSize(std::max(8, metaFont.pointSize() - 1));
+  QFont meta_font = option.font;
+  meta_font.setPointSize(std::max(kMetaFontMinPointSize, meta_font.pointSize() - 1));
 
-  QFontMetrics bodyFm(bodyFont);
-  QFontMetrics metaFm(metaFont);
+  QFontMetrics body_fm(body_font);
+  QFontMetrics meta_fm(meta_font);
 
   QString header;
   if (m_showAuthors && !outgoing && !author.isEmpty()) {
     header = author;
   }
 
-  const QRect textRect0(0, 0, maxWidth, 10'000);
-  const QRect headerRect = header.isEmpty() ? QRect() : metaFm.boundingRect(textRect0, Qt::TextWordWrap, header);
-  const QRect bodyRect = bodyFm.boundingRect(textRect0, Qt::TextWordWrap, body);
-  const QRect stampRect = metaFm.boundingRect(textRect0, Qt::TextSingleLine, stamp);
+  const QRect text_rect0(0, 0, max_width, kTextMeasureHeightPx);
+  const QRect header_rect = header.isEmpty() ? QRect() : meta_fm.boundingRect(text_rect0, Qt::TextWordWrap, header);
+  const QRect body_rect = body_fm.boundingRect(text_rect0, Qt::TextWordWrap, body);
+  const QRect stamp_rect = meta_fm.boundingRect(text_rect0, Qt::TextSingleLine, stamp);
 
-  int contentW = std::max({bodyRect.width(), headerRect.width(), stampRect.width()});
-  int contentH = bodyRect.height() + stampRect.height();
+  int content_w = std::max({body_rect.width(), header_rect.width(), stamp_rect.width()});
+  int content_h = body_rect.height() + stamp_rect.height();
   if (!header.isEmpty()) {
-    contentH += headerRect.height();
+    content_h += header_rect.height();
   }
 
-  const int bubbleW = contentW + padding * 2;
-  const int bubbleH = contentH + padding * 2;
+  const int bubble_w = content_w + padding * 2;
+  const int bubble_h = content_h + padding * 2;
 
-  return {bubbleW + margin * 2, bubbleH + margin * 2};
+  return {bubble_w + margin * 2, bubble_h + margin * 2};
 }
 
 } // namespace vox::ui::conversations

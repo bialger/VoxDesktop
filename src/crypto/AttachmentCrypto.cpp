@@ -1,18 +1,19 @@
 #include "crypto/AttachmentCrypto.hpp"
 
 #include "crypto/CryptoHelpers.hpp"
+#include "crypto/CryptoSizes.hpp"
 
 namespace vox::crypto {
 
 std::optional<EncryptedAttachmentChunk> AttachmentCrypto::encryptChunk(QByteArrayView key32,
                                                                        QByteArrayView plaintext,
                                                                        QByteArrayView ad) {
-  if (key32.size() != 32) {
+  if (key32.size() != kChaCha20KeyBytes) {
     return std::nullopt;
   }
 
-  const QByteArray nonce = CryptoHelpers::randomBytes(12);
-  if (nonce.size() != 12) {
+  const QByteArray nonce = CryptoHelpers::randomBytes(kChaCha20NonceBytes);
+  if (nonce.size() != kChaCha20NonceBytes) {
     return std::nullopt;
   }
 

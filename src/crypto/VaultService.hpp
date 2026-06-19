@@ -16,7 +16,7 @@ public:
   bool isUnlocked() const;
   void lock();
 
-  bool storeSecret(const QString &name, QByteArray value);
+  bool storeSecret(const QString &name, const QByteArray &value);
   std::optional<QByteArray> loadSecret(const QString &name) const;
   bool removeSecret(const QString &name);
 

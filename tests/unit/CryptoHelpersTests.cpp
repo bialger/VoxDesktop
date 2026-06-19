@@ -29,6 +29,9 @@ TEST_F(ProjectUnitTestSuite, AeadRoundTripWorks) {
 
   const auto decrypted = vox::crypto::CryptoHelpers::aeadDecrypt(key, nonce, ciphertext, ad);
   ASSERT_TRUE(decrypted.has_value());
+  if (!decrypted.has_value()) {
+    return;
+  }
   EXPECT_EQ(*decrypted, plaintext);
 }
 
@@ -51,20 +54,20 @@ TEST_F(ProjectUnitTestSuite, AeadDecryptFailsOnInvalidNonceLength) {
 }
 
 TEST_F(ProjectUnitTestSuite, X25519ProducesSameSharedSecretBothDirections) {
-  QByteArray aPk(crypto_kx_PUBLICKEYBYTES, Qt::Uninitialized);
-  QByteArray aSk(crypto_kx_SECRETKEYBYTES, Qt::Uninitialized);
-  QByteArray bPk(crypto_kx_PUBLICKEYBYTES, Qt::Uninitialized);
-  QByteArray bSk(crypto_kx_SECRETKEYBYTES, Qt::Uninitialized);
+  QByteArray a_pk(crypto_kx_PUBLICKEYBYTES, Qt::Uninitialized);
+  QByteArray a_sk(crypto_kx_SECRETKEYBYTES, Qt::Uninitialized);
+  QByteArray b_pk(crypto_kx_PUBLICKEYBYTES, Qt::Uninitialized);
+  QByteArray b_sk(crypto_kx_SECRETKEYBYTES, Qt::Uninitialized);
 
   ASSERT_EQ(
-      crypto_kx_keypair(reinterpret_cast<unsigned char *>(aPk.data()), reinterpret_cast<unsigned char *>(aSk.data())),
+      crypto_kx_keypair(reinterpret_cast<unsigned char *>(a_pk.data()), reinterpret_cast<unsigned char *>(a_sk.data())),
       0);
   ASSERT_EQ(
-      crypto_kx_keypair(reinterpret_cast<unsigned char *>(bPk.data()), reinterpret_cast<unsigned char *>(bSk.data())),
+      crypto_kx_keypair(reinterpret_cast<unsigned char *>(b_pk.data()), reinterpret_cast<unsigned char *>(b_sk.data())),
       0);
 
-  const QByteArray ab = vox::crypto::CryptoHelpers::x25519(aSk, bPk);
-  const QByteArray ba = vox::crypto::CryptoHelpers::x25519(bSk, aPk);
+  const QByteArray ab = vox::crypto::CryptoHelpers::x25519(a_sk, b_pk);
+  const QByteArray ba = vox::crypto::CryptoHelpers::x25519(b_sk, a_pk);
 
   ASSERT_FALSE(ab.isEmpty());
   ASSERT_FALSE(ba.isEmpty());
@@ -85,6 +88,7 @@ TEST_F(ProjectUnitTestSuite, Ed25519SignAndVerifyWorks) {
   EXPECT_TRUE(vox::crypto::CryptoHelpers::ed25519Verify(pub, message, signature));
 
   QByteArray tampered = message;
-  tampered[0] = static_cast<char>(tampered[0] ^ 0x10);
+  constexpr char kMessageTamperMask = 0x10;
+  tampered[0] = static_cast<char>(tampered[0] ^ kMessageTamperMask);
   EXPECT_FALSE(vox::crypto::CryptoHelpers::ed25519Verify(pub, tampered, signature));
 }

@@ -2,17 +2,24 @@
 
 #include <QHBoxLayout>
 
-namespace vox::ui::conversations {
+#include <memory>
 
-ComposerWidget::ComposerWidget(QWidget *parent) : QWidget(parent) {
-  auto *layout = new QHBoxLayout(this);
+namespace vox::ui::conversations {
+namespace {
+
+constexpr int kComposerEditHeightPx = 80;
+
+} // namespace
+
+ComposerWidget::ComposerWidget(QWidget *parent) : QWidget(parent), m_edit(new QPlainTextEdit(this)) {
+  auto layout = std::make_unique<QHBoxLayout>();
   layout->setContentsMargins(0, 0, 0, 0);
 
-  m_edit = new QPlainTextEdit(this);
   m_edit->setPlaceholderText("Write a message");
-  m_edit->setFixedHeight(80);
+  m_edit->setFixedHeight(kComposerEditHeightPx);
 
-  m_sendButton = new QPushButton("Send", this);
+  auto send_button = std::make_unique<QPushButton>("Send", this);
+  m_sendButton = send_button.release();
 
   layout->addWidget(m_edit, 1);
   layout->addWidget(m_sendButton);
@@ -25,6 +32,7 @@ ComposerWidget::ComposerWidget(QWidget *parent) : QWidget(parent) {
     emit sendRequested(text);
     m_edit->clear();
   });
+  setLayout(layout.release());
 }
 
 } // namespace vox::ui::conversations
