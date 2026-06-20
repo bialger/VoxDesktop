@@ -27,20 +27,26 @@ set(VOX_QT_REQUIRED_COMPONENTS
 )
 
 function(vox_download_and_extract archive_url archive_path source_dir)
-    # Validate source completeness before reusing an existing extracted tree.
-    # Some interrupted extractions leave CMakeLists.txt present, but miss modules
-    # like src/network, which later breaks feature evaluation (e.g. udpsocket).
-    set(qt_source_sentinel_network "${source_dir}/src/network/CMakeLists.txt")
-    set(qt_source_sentinel_sql "${source_dir}/src/sql/CMakeLists.txt")
+    # Optional extra paths (relative to source_dir) that must exist for a complete tree.
+    # qtbase needs src/network and src/sql; submodule archives use different layouts.
+    set(extra_sentinels ${ARGN})
+
+    set(source_incomplete FALSE)
+    if(NOT EXISTS "${source_dir}/CMakeLists.txt")
+        set(source_incomplete TRUE)
+    endif()
+    foreach(sentinel IN LISTS extra_sentinels)
+        if(NOT EXISTS "${source_dir}/${sentinel}")
+            set(source_incomplete TRUE)
+        endif()
+    endforeach()
 
     if(NOT EXISTS "${archive_path}")
         message(STATUS "Downloading Qt source archive: ${archive_url}")
         file(DOWNLOAD "${archive_url}" "${archive_path}" SHOW_PROGRESS)
     endif()
 
-    if(NOT EXISTS "${source_dir}/CMakeLists.txt" OR
-       NOT EXISTS "${qt_source_sentinel_network}" OR
-       NOT EXISTS "${qt_source_sentinel_sql}")
+    if(source_incomplete)
         if(EXISTS "${source_dir}")
             message(STATUS "Removing incomplete Qt source tree: ${source_dir}")
             file(REMOVE_RECURSE "${source_dir}")
@@ -58,11 +64,18 @@ function(vox_download_and_extract archive_url archive_path source_dir)
         endif()
     endif()
 
-    if(NOT EXISTS "${qt_source_sentinel_network}" OR NOT EXISTS "${qt_source_sentinel_sql}")
+    if(NOT EXISTS "${source_dir}/CMakeLists.txt")
         message(FATAL_ERROR
             "Extracted Qt source tree is incomplete at '${source_dir}'. "
             "Delete '${archive_path}' and reconfigure to force a clean re-download.")
     endif()
+    foreach(sentinel IN LISTS extra_sentinels)
+        if(NOT EXISTS "${source_dir}/${sentinel}")
+            message(FATAL_ERROR
+                "Extracted Qt source tree is incomplete at '${source_dir}' "
+                "(missing '${sentinel}'). Delete '${archive_path}' and reconfigure to force a clean re-download.")
+        endif()
+    endforeach()
 endfunction()
 
 function(vox_build_qtbase)
@@ -74,7 +87,8 @@ function(vox_build_qtbase)
     set(qtbase_archive_path "${CMAKE_CURRENT_BINARY_DIR}/${qtbase_archive}")
     set(qtbase_url "https://github.com/qt/qtbase/archive/refs/tags/v${VOX_QT_VERSION}.tar.gz")
     set(qtbase_source_dir "${CMAKE_CURRENT_BINARY_DIR}/qtbase-${VOX_QT_VERSION}")
-    vox_download_and_extract("${qtbase_url}" "${qtbase_archive_path}" "${qtbase_source_dir}")
+    vox_download_and_extract("${qtbase_url}" "${qtbase_archive_path}" "${qtbase_source_dir}"
+        "src/network/CMakeLists.txt" "src/sql/CMakeLists.txt")
 
     file(MAKE_DIRECTORY "${QT_BUILD_DIR}")
     set(qt_configure_options
