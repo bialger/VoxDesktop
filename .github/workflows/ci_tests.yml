@@ -31,11 +31,15 @@ jobs:
 
       - uses: seanmiddleditch/gha-setup-ninja@master
 
-      - name: Install Qt dependencies for Linux
+      - name: Install Linux dependencies
         if: ${{ matrix.config.os == 'ubuntu-latest' }}
         run: |
           sudo apt update
-          sudo apt install libgl1-mesa-dev libglu1-mesa-dev
+          # Qt6 platform plugins package name varies by Ubuntu image.
+          # Prefer qt6-qpa-plugins (provides xcb), fall back if runner changes.
+          sudo apt install -y qt6-qpa-plugins || sudo apt install -y qt6-base-plugins
+          # Qt xcb platform plugin runtime deps (needed for headless CI via xvfb)
+          sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools qt6-websockets-dev qt6-multimedia-dev libqt6svg6-dev libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1 xvfb
 
       - name: Create CMake cache
         shell: bash
@@ -45,33 +49,53 @@ jobs:
       - name: Build main target
         shell: bash
         run: |
-          cmake --build cmake-build-release --target QtCMake
+          cmake --build cmake-build-release --target vox-desktop
 
       - name: Run program
         shell: bash
-        working-directory: ./cmake-build-release/bin
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-              ./QtCMake.exe --help
+              cd ./cmake-build-release
+              # Run from build dir (normalize output location if needed)
+              if [ ! -f ./vox-desktop.exe ]; then
+                  if [ -f ./bin/vox-desktop.exe ]; then
+                      cp -f ./bin/vox-desktop.exe ./vox-desktop.exe
+                  elif [ -f ./src/vox-desktop.exe ]; then
+                      cp -f ./src/vox-desktop.exe ./vox-desktop.exe
+                  fi
+              fi
+              ./vox-desktop.exe --help
           else 
-              ./QtCMake --help
+              # Normalize path/name for CI: run from build output under bin/
+              cd ./cmake-build-release
+              mkdir -p ./bin
+              cp -f ./bin/vox-desktop ./bin/vox_desktop
+              chmod +x ./bin/vox_desktop
+              ./bin/vox_desktop --help
           fi
       - name: Build tests
         shell: bash
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-              cmake --build ./cmake-build-release --target QtCMake_tests || echo "Built with errors"
+              cmake --build ./cmake-build-release --target vox_unit_tests vox_integration_tests vox_vector_tests vox_qt_tests || echo "Built with errors"
           else
-              cmake --build ./cmake-build-release --target QtCMake_tests
+              cmake --build ./cmake-build-release --target vox_unit_tests vox_integration_tests vox_vector_tests vox_qt_tests
           fi
       - name: Run tests
         shell: bash
-        working-directory: ./cmake-build-release/tests
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-              ./QtCMake_tests.exe || echo "Tests failed" # Due to a specific MinGW-related Github Actions issue
+              cd ./cmake-build-release
+              ctest --output-on-failure || echo "Tests failed" # Due to a specific MinGW-related Github Actions issue
           else
-              ./QtCMake_tests
+              cd ./cmake-build-release
+              # Use ctest for discovery/reporting; on Linux run Qt-labeled tests under Xvfb.
+              if [ "$RUNNER_OS" == "Linux" ]; then
+                  ctest -LE qt --output-on-failure
+                  xvfb-run -a ctest -L qt --output-on-failure
+              else
+                  ctest --output-on-failure
+              fi
           fi
 
   style-check:
@@ -158,17 +182,21 @@ jobs:
           sudo apt-get update
           # Install a C++23-capable toolchain and clang-tidy-19 for better C++23 support
           sudo apt-get -y install clang-19 clang-tidy-19
-      - name: Install Qt dependencies for Linux
+      - name: Install Linux dependencies
         run: |
           sudo apt update
-          sudo apt install libgl1-mesa-dev libglu1-mesa-dev
-          sudo apt install qt6-base-dev
+          sudo apt install -y qt6-qpa-plugins || sudo apt install -y qt6-base-plugins
+          sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools qt6-websockets-dev qt6-multimedia-dev libqt6svg6-dev libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1
 
       - name: Create CMake cache
         run: |
           cmake -S . -B cmake-build-tidy \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build targets for clang-tidy
+        run: |
+          cmake --build cmake-build-tidy --target vox_core vox_qt_tests -j"$(nproc)"
 
       - name: Run clang-tidy
         shell: bash
@@ -182,8 +210,10 @@ jobs:
           fi
 
           echo "Running clang-tidy-19 on ${#files[@]} files..."
-          # Use clang-tidy-19 for better C++23 support and --extra-arg-before to ensure C++23 standard is set before other flags
-          clang-tidy-19 "${files[@]}" -p cmake-build-tidy --format-style=file > tidy_output.txt 2>&1 || true
+          : > tidy_output.txt
+          for f in "${files[@]}"; do
+            clang-tidy-19 "$f" -p cmake-build-tidy --format-style=file >> tidy_output.txt 2>&1 || true
+          done
 
           # Ensure file exists and is readable
           if [ ! -f tidy_output.txt ]; then
@@ -198,8 +228,8 @@ jobs:
             errors=0
             warnings=0
           else
-            errors=$(grep -c "error:" tidy_output.txt 2>/dev/null || echo "0")
-            warnings=$(grep -c "warning:" tidy_output.txt 2>/dev/null || echo "0")
+            errors=$(grep -Ec '^(src|bin|tests|lib)/.*:[0-9]+:[0-9]+: error:' tidy_output.txt 2>/dev/null || echo "0")
+            warnings=$(grep -Ec '^(src|bin|tests|lib)/.*:[0-9]+:[0-9]+: warning:' tidy_output.txt 2>/dev/null || echo "0")
           fi
 
           # Ensure we have clean integer values

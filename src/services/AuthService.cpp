@@ -1,0 +1,191 @@
+#include "services/AuthService.hpp"
+
+#include "crypto/CryptoHelpers.hpp"
+#include "crypto/SyncCrypto.hpp"
+
+#include <QCryptographicHash>
+#include <QDateTime>
+#include <QUuid>
+
+namespace vox::services {
+namespace {
+
+QString ToB64(const QByteArray &bytes) {
+  return QString::fromUtf8(bytes.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
+}
+
+QString Sha256HexLower(const QString &input) {
+  const QByteArray hash = QCryptographicHash::hash(input.toUtf8(), QCryptographicHash::Sha256);
+  return QString::fromLatin1(hash.toHex());
+}
+
+} // namespace
+
+AuthService::AuthService(network::AuthApi &authApi,
+                         network::NetworkAccess &networkAccess,
+                         storage::IAccountsRepository &accountsRepository,
+                         crypto::VaultService &vaultService,
+                         crypto::IdentityKeyStore &identityKeyStore,
+                         crypto::PrekeyManager &prekeyManager,
+                         QString serverId,
+                         QString deviceId) :
+    m_authApi(authApi), m_network(networkAccess), m_accountsRepository(accountsRepository), m_vault(vaultService),
+    m_identity(identityKeyStore), m_prekeys(prekeyManager), m_serverId(std::move(serverId)),
+    m_deviceId(std::move(deviceId)) {
+}
+
+bool AuthService::registerUser(const QString &username, const QString &passwordDerived) {
+  if (username.isEmpty() || passwordDerived.isEmpty()) {
+    return false;
+  }
+
+  const QString derived = Sha256HexLower(passwordDerived);
+
+  if (!m_identity.ensureIdentityKeys()) {
+    return false;
+  }
+
+  const auto identity = m_identity.identityKeys();
+  const auto signed_prekey = m_prekeys.rotateSignedPrekey();
+
+  if (!identity.has_value() || !signed_prekey.has_value()) {
+    return false;
+  }
+
+  const QByteArray sync_master_key = crypto::CryptoHelpers::randomBytes(32);
+  const auto wrapped_sync = crypto::SyncCrypto::wrapSyncMasterKey(derived.toUtf8(), sync_master_key);
+  if (!wrapped_sync.has_value()) {
+    return false;
+  }
+
+  network::RegisterRequest request;
+  request.username = username;
+  request.passwordDerivedValue = derived;
+  request.deviceId = m_deviceId;
+  request.deviceLabel = "Vox Desktop";
+  request.identityKeyPublic = ToB64(identity->dhPublic);
+  request.signedPrekeyPublic = ToB64(signed_prekey->publicKey);
+  request.signedPrekeySignature = ToB64(signed_prekey->signature);
+  request.wrappedSyncKey = ToB64(wrapped_sync->wrappedSyncKey);
+  request.syncWrapSalt = ToB64(wrapped_sync->salt);
+  request.syncWrapParams = wrapped_sync->params.toJson();
+
+  const auto response = m_authApi.registerUser(request);
+  if (!response.ok || !response.data.has_value()) {
+    return false;
+  }
+
+  return persistSession(username, *response.data);
+}
+
+bool AuthService::login(const QString &username, const QString &passwordDerived) {
+  if (username.isEmpty() || passwordDerived.isEmpty()) {
+    return false;
+  }
+
+  const QString derived = Sha256HexLower(passwordDerived);
+
+  network::LoginRequest request;
+  request.username = username;
+  request.passwordDerivedValue = derived;
+  request.deviceId = m_deviceId;
+  request.deviceLabel = "Vox Desktop";
+
+  if (m_identity.ensureIdentityKeys()) {
+    const auto identity = m_identity.identityKeys();
+    const auto signed_prekey = m_prekeys.rotateSignedPrekey();
+    if (identity.has_value() && signed_prekey.has_value()) {
+      request.identityKeyPublic = ToB64(identity->dhPublic);
+      request.signedPrekeyPublic = ToB64(signed_prekey->publicKey);
+      request.signedPrekeySignature = ToB64(signed_prekey->signature);
+    }
+  }
+
+  const auto response = m_authApi.login(request);
+  if (!response.ok || !response.data.has_value()) {
+    return false;
+  }
+
+  return persistSession(username, *response.data);
+}
+
+bool AuthService::restoreSession() {
+  const auto account = m_accountsRepository.activeAccount();
+  if (!account.has_value()) {
+    return false;
+  }
+
+  const auto refresh_token = m_vault.loadSecret("refresh_token/" + account->userId);
+  if (!refresh_token.has_value()) {
+    return false;
+  }
+
+  const auto refreshed = m_authApi.refresh(
+      network::RefreshRequest{.refreshToken = QString::fromUtf8(*refresh_token), .deviceId = account->activeDeviceId});
+  if (!refreshed.ok || !refreshed.data.has_value()) {
+    return false;
+  }
+
+  m_network.setBearerToken(refreshed.data->accessToken);
+
+  m_context = AuthContext{.userId = account->userId,
+                          .username = account->username,
+                          .deviceId = account->activeDeviceId,
+                          .accessToken = refreshed.data->accessToken,
+                          .refreshToken = refreshed.data->refreshToken};
+
+  m_vault.storeSecret("refresh_token/" + account->userId, refreshed.data->refreshToken.toUtf8());
+
+  domain::Account updated = *account;
+  updated.refreshTokenCiphertext = refreshed.data->refreshToken.toUtf8();
+  updated.lastLogin = QDateTime::currentDateTimeUtc();
+
+  return m_accountsRepository.upsertAccount(updated);
+}
+
+bool AuthService::logout() {
+  if (!m_context.has_value()) {
+    return true;
+  }
+
+  const auto result = m_authApi.logout();
+  const auto active = m_accountsRepository.activeAccount();
+  if (active.has_value()) {
+    m_vault.removeSecret("refresh_token/" + active->userId);
+    m_accountsRepository.deleteAccount(active->accountId);
+  }
+  m_network.setBearerToken({});
+  m_context.reset();
+  return result.ok;
+}
+
+std::optional<AuthContext> AuthService::context() const {
+  return m_context;
+}
+
+bool AuthService::persistSession(const QString &username, const network::AuthSessionResponse &response) {
+  m_network.setBearerToken(response.accessToken);
+
+  m_context = AuthContext{.userId = response.userId,
+                          .username = username,
+                          .deviceId = m_deviceId,
+                          .accessToken = response.accessToken,
+                          .refreshToken = response.refreshToken};
+
+  if (!m_vault.storeSecret("refresh_token/" + response.userId, response.refreshToken.toUtf8())) {
+    return false;
+  }
+
+  domain::Account account;
+  account.accountId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+  account.serverId = m_serverId;
+  account.userId = response.userId;
+  account.username = username;
+  account.activeDeviceId = m_deviceId;
+  account.refreshTokenCiphertext = response.refreshToken.toUtf8();
+  account.lastLogin = QDateTime::currentDateTimeUtc();
+
+  return m_accountsRepository.upsertAccount(account);
+}
+
+} // namespace vox::services

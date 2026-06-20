@@ -1,49 +1,57 @@
-# QtCMake
-A C++ project template with Qt6 and CMake that downloads and compiles Qt.
-The resulting app is an executable that can be run on a system without Qt.
+# Vox Desktop Messenger
 
-The main Qt6 configuration is found in the [correspondent](lib/qt/CMakeLists.txt) CMakeLists.txt file.
+C++23 + Qt6 desktop client scaffold for Vox Messenger.
 
-> Note that statically compiled Qt6 weights more than 5 GB.
-> The good thing is that user does not need whole compiled Qt6 with this configuration.
+## Build Targets
+
+- `vox_core` - core static library (crypto, network, storage, services, UI widgets)
+- `vox-desktop` - desktop executable
+- `vox_unit_tests` - gtest unit suites
+- `vox_integration_tests` - fake-server integration suites
+- `vox_vector_tests` - protocol/vector suites
+- `vox_qt_tests` - Qt model/widget suites
+- `vox_contract_tests` (optional) - real backend contract tests (`VOX_ENABLE_CONTRACT_TESTS=ON`)
 
 ## Prerequisites
 
-* CMake
-* Ninja
-* Git
+- CMake 3.25+
+- C++23 compiler
+- Qt6 (Core, Gui, Widgets, Network, WebSockets, Sql, Concurrent, Multimedia, Svg, Test)
+- Git
 
-On Linux: `libgl1-mesa-dev libglu1-mesa-dev` and all dependencies are required.
-> Note that most of the libraries that match `*xcb*` and `*xkb*` may be required on Linux.
+`libsodium` and `googletest` are fetched via CMake `FetchContent`.
 
-## How to build and run
+## Configure and Build
 
-Run the following commands from the project directory.
-
-1. Create CMake cache
-
-This step may take a lot of time because it downloads and compiles Qt.
-
-```shell
-cmake -S . -B cmake-build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+```bash
+cmake -S . -B build -G Ninja
+cmake --build build --target vox-desktop
+cmake --build build --target vox_unit_tests vox_integration_tests vox_vector_tests vox_qt_tests
 ```
 
-2. Build executable target
+## Run
 
-```shell
-cmake --build cmake-build --target QtCMake
+```bash
+./build/src/vox-desktop --help
+./build/src/vox-desktop
 ```
 
-3. Run executable target
+## Test
 
-* On Windows:
-
-```shell
-.\cmake-build\bin\QtCMake.exe
+```bash
+ctest --test-dir build --output-on-failure
 ```
 
-* On *nix:
+CTest labels used in this repo:
 
-```shell
-./cmake-build/bin/QtCMake
-```
+- `unit`
+- `integration`
+- `vectors`
+- `qt`
+- `contract`
+
+## Environment Variables
+
+- `VOX_BASE_URL` - base server URL (default: `http://127.0.0.1:8080`)
+- `VOX_VAULT_PASSWORD` - local vault unlock password (default: `vox-dev-password`)
+- `VOX_CONTRACT_BASE_URL` - contract-test server base URL
