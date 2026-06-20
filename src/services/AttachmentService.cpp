@@ -15,7 +15,8 @@ std::optional<QString> AttachmentService::uploadEncrypted(const QString &convers
     return std::nullopt;
   }
 
-  const network::AttachmentUploadInitRequest request{conversationId, static_cast<qint64>(ciphertext.size()), mimeHint};
+  const network::AttachmentUploadInitRequest request{
+      .conversationId = conversationId, .fileSize = static_cast<qint64>(ciphertext.size()), .mimeHint = mimeHint};
   const auto init = m_api.uploadInit(request);
   if (!init.ok || !init.data.has_value()) {
     return std::nullopt;

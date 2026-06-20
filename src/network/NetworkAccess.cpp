@@ -121,7 +121,7 @@ NetworkResponse NetworkAccess::execute(const QString &method,
   } else if (method == "DELETE") {
     reply = manager.deleteResource(request);
   } else {
-    return {0, {}, "Unsupported HTTP method"};
+    return {.statusCode = 0, .body = {}, .errorMessage = "Unsupported HTTP method"};
   }
 
   QEventLoop loop;

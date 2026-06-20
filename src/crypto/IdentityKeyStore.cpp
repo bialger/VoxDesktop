@@ -52,7 +52,8 @@ std::optional<IdentityKeys> IdentityKeyStore::identityKeys() const {
     return std::nullopt;
   }
 
-  return IdentityKeys{*sign_pub, *sign_priv, *dh_pub, *dh_priv};
+  return IdentityKeys{
+      .signingPublic = *sign_pub, .signingPrivate = *sign_priv, .dhPublic = *dh_pub, .dhPrivate = *dh_priv};
 }
 
 } // namespace vox::crypto

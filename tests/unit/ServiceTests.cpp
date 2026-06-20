@@ -56,7 +56,7 @@ TEST_F(ProjectUnitTestSuite, AuthServiceRegisterAndRestoreSessionPositive) {
                                const QString &path,
                                const QByteArray &body,
                                const vox::network::NetworkAccess::HeaderMap &headers) {
-    return fake_server.handle(method, path, body, headers);
+    return fake_server.Handle(method, path, body, headers);
   });
 
   vox::network::AuthApi auth_api(network);
@@ -89,7 +89,7 @@ TEST_F(ProjectUnitTestSuite, AuthServiceRejectsEmptyCredentialsNegative) {
                                const QString &path,
                                const QByteArray &body,
                                const vox::network::NetworkAccess::HeaderMap &headers) {
-    return fake_server.handle(method, path, body, headers);
+    return fake_server.Handle(method, path, body, headers);
   });
 
   vox::network::AuthApi auth_api(network);
@@ -113,14 +113,14 @@ TEST_F(ProjectUnitTestSuite, MessageSendServiceQueuesJobOnTransportFailureNegati
   ASSERT_TRUE(QSqlDatabase::isDriverAvailable("QSQLITE")) << "QSQLITE driver is unavailable in this Qt build";
 
   FakeVoxServer fake_server;
-  fake_server.setFailNextSend(true);
+  fake_server.SetFailNextSend(true);
 
   vox::network::NetworkAccess network("http://fake");
   network.setCustomHandler([&](const QString &method,
                                const QString &path,
                                const QByteArray &body,
                                const vox::network::NetworkAccess::HeaderMap &headers) {
-    return fake_server.handle(method, path, body, headers);
+    return fake_server.Handle(method, path, body, headers);
   });
   network.setBearerToken("acc_usr_1");
 

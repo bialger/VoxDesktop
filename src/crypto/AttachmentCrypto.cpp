@@ -23,7 +23,7 @@ std::optional<EncryptedAttachmentChunk> AttachmentCrypto::encryptChunk(QByteArra
   }
 
   const QByteArray digest = CryptoHelpers::sha256(ciphertext);
-  return EncryptedAttachmentChunk{nonce, ciphertext, digest};
+  return EncryptedAttachmentChunk{.nonce = nonce, .ciphertext = ciphertext, .sha256 = digest};
 }
 
 std::optional<QByteArray> AttachmentCrypto::decryptChunk(QByteArrayView key32,

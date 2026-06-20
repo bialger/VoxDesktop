@@ -71,7 +71,7 @@ std::optional<QByteArray> DoubleRatchetSession::encrypt(QByteArrayView plaintext
     return std::nullopt;
   }
 
-  RatchetMessage msg{m_sendCounter, nonce, ciphertext};
+  RatchetMessage msg{.counter = m_sendCounter, .nonce = nonce, .ciphertext = ciphertext};
   advanceChain(true, m_sendCounter);
   ++m_sendCounter;
   return msg.serialize();

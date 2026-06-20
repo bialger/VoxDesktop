@@ -53,7 +53,8 @@ std::optional<SignedPrekey> PrekeyManager::rotateSignedPrekey() {
     return std::nullopt;
   }
 
-  SignedPrekey signed_prekey{m_nextSignedPrekeyId++, prekey_pub, prekey_priv, signature};
+  SignedPrekey signed_prekey{
+      .keyId = m_nextSignedPrekeyId++, .publicKey = prekey_pub, .privateKey = prekey_priv, .signature = signature};
 
   if (!m_vault.storeSecret(kSignedPrekeyIdName, QByteArray::number(signed_prekey.keyId)) ||
       !m_vault.storeSecret(kSignedPrekeyPubName, signed_prekey.publicKey) ||

@@ -13,6 +13,7 @@ include(GoogleTest)
 enable_testing()
 
 set(TEST_SUITE_SOURCES
+    test_suites/GTestMain.cpp
     test_suites/ProjectUnitTestSuite.cpp
     test_suites/ProjectIntegrationTestSuite.cpp
     test_suites/ProjectVectorTestSuite.cpp
@@ -26,7 +27,7 @@ function(vox_add_gtest target label)
 
     target_link_libraries(${target} PRIVATE
         vox_core
-        GTest::gtest_main
+        GTest::gtest
         Qt6::Core
         Qt6::Network
         Qt6::Sql
@@ -85,7 +86,10 @@ vox_add_gtest(vox_vector_tests vectors
 
 add_executable(vox_qt_tests
     qt/ConversationListModelQtTests.cpp
+    qt/QtUiTests.hpp
 )
+
+set_target_properties(vox_qt_tests PROPERTIES AUTOMOC ON)
 
 target_link_libraries(vox_qt_tests PRIVATE
     vox_core

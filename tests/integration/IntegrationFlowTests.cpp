@@ -18,7 +18,7 @@ vox::network::NetworkAccess BuildNetwork(FakeVoxServer &server) {
                                const QString &path,
                                const QByteArray &body,
                                const vox::network::NetworkAccess::HeaderMap &headers) {
-    return server.handle(method, path, body, headers);
+    return server.Handle(method, path, body, headers);
   });
   return network;
 }
@@ -108,7 +108,8 @@ TEST_F(ProjectIntegrationTestSuite, AttachmentUploadDownloadPositive) {
   }
   network.setBearerToken(registered.data->accessToken);
 
-  vox::network::AttachmentUploadInitRequest init_req{"conv_1", kAttachmentPayloadBytes, "application/octet-stream"};
+  vox::network::AttachmentUploadInitRequest init_req{
+      .conversationId = "conv_1", .fileSize = kAttachmentPayloadBytes, .mimeHint = "application/octet-stream"};
   const auto init = attachments.uploadInit(init_req);
   ASSERT_TRUE(init.ok);
   ASSERT_TRUE(init.data.has_value());

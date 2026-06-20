@@ -303,7 +303,7 @@ int Application::run(int argc, char **argv) {
         c.lastMessageAt = now;
       }
     }
-    std::sort(list.begin(), list.end(), [](const domain::Conversation &a, const domain::Conversation &b) {
+    std::ranges::sort(list, [](const domain::Conversation &a, const domain::Conversation &b) {
       if (a.pinRank != b.pinRank)
         return a.pinRank > b.pinRank;
       return a.lastMessageAt > b.lastMessageAt;
@@ -497,7 +497,7 @@ int Application::run(int argc, char **argv) {
           c.lastMessageAt = now;
         }
       }
-      std::sort(list.begin(), list.end(), [](const domain::Conversation &a, const domain::Conversation &b) {
+      std::ranges::sort(list, [](const domain::Conversation &a, const domain::Conversation &b) {
         if (a.pinRank != b.pinRank)
           return a.pinRank > b.pinRank;
         return a.lastMessageAt > b.lastMessageAt;

@@ -62,7 +62,7 @@ std::optional<WrappedSyncKeyBundle> SyncCrypto::wrapSyncMasterKey(QByteArrayView
 
   QByteArray serialized = nonce;
   serialized.append(wrapped);
-  return WrappedSyncKeyBundle{serialized, salt, params};
+  return WrappedSyncKeyBundle{.wrappedSyncKey = serialized, .salt = salt, .params = params};
 }
 
 std::optional<QByteArray> SyncCrypto::unwrapSyncMasterKey(QByteArrayView passwordDerived,

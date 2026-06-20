@@ -7,7 +7,7 @@
 
 class ProjectIntegrationTestSuite : public testing::Test {
 protected:
-  std::filesystem::path temporaryDirectory;
+  std::filesystem::path temporaryDirectory_;
 
   void SetUp() override;
   void TearDown() override;

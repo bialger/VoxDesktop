@@ -120,19 +120,19 @@ bool AuthService::restoreSession() {
     return false;
   }
 
-  const auto refreshed =
-      m_authApi.refresh(network::RefreshRequest{QString::fromUtf8(*refresh_token), account->activeDeviceId});
+  const auto refreshed = m_authApi.refresh(
+      network::RefreshRequest{.refreshToken = QString::fromUtf8(*refresh_token), .deviceId = account->activeDeviceId});
   if (!refreshed.ok || !refreshed.data.has_value()) {
     return false;
   }
 
   m_network.setBearerToken(refreshed.data->accessToken);
 
-  m_context = AuthContext{account->userId,
-                          account->username,
-                          account->activeDeviceId,
-                          refreshed.data->accessToken,
-                          refreshed.data->refreshToken};
+  m_context = AuthContext{.userId = account->userId,
+                          .username = account->username,
+                          .deviceId = account->activeDeviceId,
+                          .accessToken = refreshed.data->accessToken,
+                          .refreshToken = refreshed.data->refreshToken};
 
   m_vault.storeSecret("refresh_token/" + account->userId, refreshed.data->refreshToken.toUtf8());
 
@@ -166,7 +166,11 @@ std::optional<AuthContext> AuthService::context() const {
 bool AuthService::persistSession(const QString &username, const network::AuthSessionResponse &response) {
   m_network.setBearerToken(response.accessToken);
 
-  m_context = AuthContext{response.userId, username, m_deviceId, response.accessToken, response.refreshToken};
+  m_context = AuthContext{.userId = response.userId,
+                          .username = username,
+                          .deviceId = m_deviceId,
+                          .accessToken = response.accessToken,
+                          .refreshToken = response.refreshToken};
 
   if (!m_vault.storeSecret("refresh_token/" + response.userId, response.refreshToken.toUtf8())) {
     return false;

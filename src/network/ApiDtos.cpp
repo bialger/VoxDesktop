@@ -138,7 +138,7 @@ std::optional<ApiError> parseApiError(const QJsonObject &obj) {
     return std::nullopt;
   }
 
-  return ApiError{code_value.toInt(), msg_value.toString()};
+  return ApiError{.code = code_value.toInt(), .message = msg_value.toString()};
 }
 
 std::optional<AuthSessionResponse> parseAuthSessionResponse(const QJsonObject &obj) {
@@ -151,8 +151,11 @@ std::optional<AuthSessionResponse> parseAuthSessionResponse(const QJsonObject &o
     return std::nullopt;
   }
 
-  return AuthSessionResponse{
-      *user_id, *access_token, *refresh_token, *device_status, obj.value("sync_key_version").toInt()};
+  return AuthSessionResponse{.userId = *user_id,
+                             .accessToken = *access_token,
+                             .refreshToken = *refresh_token,
+                             .deviceStatus = *device_status,
+                             .syncKeyVersion = obj.value("sync_key_version").toInt()};
 }
 
 std::optional<RefreshResponse> parseRefreshResponse(const QJsonObject &obj) {
@@ -162,7 +165,7 @@ std::optional<RefreshResponse> parseRefreshResponse(const QJsonObject &obj) {
     return std::nullopt;
   }
 
-  return RefreshResponse{*access_token, *refresh_token};
+  return RefreshResponse{.accessToken = *access_token, .refreshToken = *refresh_token};
 }
 
 std::optional<MeResponse> parseMeResponse(const QJsonObject &obj) {
@@ -173,7 +176,10 @@ std::optional<MeResponse> parseMeResponse(const QJsonObject &obj) {
     return std::nullopt;
   }
 
-  return MeResponse{*user_id, *username, *current_device, obj.value("sync_key_version").toInt()};
+  return MeResponse{.userId = *user_id,
+                    .username = *username,
+                    .currentDeviceId = *current_device,
+                    .syncKeyVersion = obj.value("sync_key_version").toInt()};
 }
 
 std::optional<DirectoryUser> parseDirectoryUser(const QJsonObject &obj) {
@@ -183,7 +189,7 @@ std::optional<DirectoryUser> parseDirectoryUser(const QJsonObject &obj) {
     return std::nullopt;
   }
 
-  return DirectoryUser{*user_id, *username};
+  return DirectoryUser{.userId = *user_id, .username = *username};
 }
 
 std::optional<DeviceDirectoryEntry> parseDeviceDirectoryEntry(const QJsonObject &obj) {
@@ -197,11 +203,11 @@ std::optional<DeviceDirectoryEntry> parseDeviceDirectoryEntry(const QJsonObject 
     return std::nullopt;
   }
 
-  return DeviceDirectoryEntry{*device_id,
-                              obj.value("device_label").toString(),
-                              *identity_key_public,
-                              *signed_prekey_public,
-                              *signed_prekey_signature};
+  return DeviceDirectoryEntry{.deviceId = *device_id,
+                              .deviceLabel = obj.value("device_label").toString(),
+                              .identityKeyPublic = *identity_key_public,
+                              .signedPrekeyPublic = *signed_prekey_public,
+                              .signedPrekeySignature = *signed_prekey_signature};
 }
 
 std::optional<ConversationCreateResponse> parseConversationCreateResponse(const QJsonObject &obj) {
@@ -209,7 +215,7 @@ std::optional<ConversationCreateResponse> parseConversationCreateResponse(const 
   if (!conversation_id.has_value()) {
     return std::nullopt;
   }
-  return ConversationCreateResponse{*conversation_id};
+  return ConversationCreateResponse{.conversationId = *conversation_id};
 }
 
 std::optional<ConversationSummaryDto> parseConversationSummaryDto(const QJsonObject &obj) {
@@ -245,7 +251,8 @@ std::optional<ConversationMemberDto> parseConversationMemberDto(const QJsonObjec
     return std::nullopt;
   }
 
-  return ConversationMemberDto{*user_id, obj.value("username").toString(), obj.value("role").toString()};
+  return ConversationMemberDto{
+      .userId = *user_id, .username = obj.value("username").toString(), .role = obj.value("role").toString()};
 }
 
 std::optional<ConversationMembersResponseDto> parseConversationMembersResponseDto(const QJsonObject &obj) {
@@ -287,7 +294,9 @@ std::optional<SendEnvelopeResponse> parseSendEnvelopeResponse(const QJsonObject 
     return std::nullopt;
   }
 
-  return SendEnvelopeResponse{*envelope_id, *server_timestamp, obj.value("delivered_to_count").toInt()};
+  return SendEnvelopeResponse{.envelopeId = *envelope_id,
+                              .serverTimestamp = *server_timestamp,
+                              .deliveredToCount = obj.value("delivered_to_count").toInt()};
 }
 
 std::optional<EnvelopeDto> parseEnvelopeDto(const QJsonObject &obj) {
@@ -342,7 +351,7 @@ std::optional<AttachmentUploadInitResponse> parseAttachmentUploadInitResponse(co
     return std::nullopt;
   }
 
-  return AttachmentUploadInitResponse{*attachment_id, *blob_path};
+  return AttachmentUploadInitResponse{.attachmentId = *attachment_id, .blobPath = *blob_path};
 }
 
 std::optional<SyncRecordDto> parseSyncRecordDto(const QJsonObject &obj) {
@@ -353,8 +362,11 @@ std::optional<SyncRecordDto> parseSyncRecordDto(const QJsonObject &obj) {
     return std::nullopt;
   }
 
-  return SyncRecordDto{
-      *collection, *record_id, obj.value("version").toInt(), *ciphertext, obj.value("deleted").toBool(false)};
+  return SyncRecordDto{.collection = *collection,
+                       .recordId = *record_id,
+                       .version = obj.value("version").toInt(),
+                       .ciphertext = *ciphertext,
+                       .deleted = obj.value("deleted").toBool(false)};
 }
 
 std::optional<SyncKeyBundleDto> parseSyncKeyBundleDto(const QJsonObject &obj) {
@@ -364,8 +376,10 @@ std::optional<SyncKeyBundleDto> parseSyncKeyBundleDto(const QJsonObject &obj) {
     return std::nullopt;
   }
 
-  return SyncKeyBundleDto{
-      obj.value("version").toInt(), *wrapped_sync_key, *sync_wrap_salt, obj.value("sync_wrap_params").toObject()};
+  return SyncKeyBundleDto{.version = obj.value("version").toInt(),
+                          .wrappedSyncKey = *wrapped_sync_key,
+                          .syncWrapSalt = *sync_wrap_salt,
+                          .syncWrapParams = obj.value("sync_wrap_params").toObject()};
 }
 
 } // namespace vox::network

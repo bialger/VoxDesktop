@@ -14,7 +14,7 @@ vox::network::NetworkAccess BuildNetwork(FakeVoxServer &server) {
                                const QString &path,
                                const QByteArray &body,
                                const vox::network::NetworkAccess::HeaderMap &headers) {
-    return server.handle(method, path, body, headers);
+    return server.Handle(method, path, body, headers);
   });
   return network;
 }
@@ -53,7 +53,8 @@ TEST_F(ProjectIntegrationTestSuite, RefreshFailsWithInvalidTokenNegative) {
 
   vox::network::AuthApi auth(network);
 
-  const auto result = auth.refresh(vox::network::RefreshRequest{"invalid_refresh", "dev_desktop"});
+  const auto result =
+      auth.refresh(vox::network::RefreshRequest{.refreshToken = "invalid_refresh", .deviceId = "dev_desktop"});
   EXPECT_FALSE(result.ok);
   EXPECT_EQ(result.statusCode, 401);
 }
@@ -74,7 +75,7 @@ TEST_F(ProjectIntegrationTestSuite, SendFailsWhenServerQueueIsFullNegative) {
 
   network.setBearerToken(registered.data->accessToken);
 
-  server.setFailNextSend(true);
+  server.SetFailNextSend(true);
 
   vox::network::SendEnvelopeRequest send_request;
   send_request.deviceId = "dev_desktop";
@@ -103,7 +104,7 @@ TEST_F(ProjectIntegrationTestSuite, UnauthorizedAfterServerSideInvalidationNegat
   }
 
   network.setBearerToken(registered.data->accessToken);
-  server.setForceUnauthorized(true);
+  server.SetForceUnauthorized(true);
 
   const auto pending = conversations.pendingEnvelopes(100);
   EXPECT_FALSE(pending.ok);
