@@ -78,15 +78,36 @@ function(vox_download_and_extract archive_url archive_path source_dir)
     endforeach()
 endfunction()
 
-function(vox_build_qtbase)
-    if(EXISTS "${Qt6_DIR}/Qt6Config.cmake")
-        return()
-    endif()
+set(VOX_QT_CONFIGURE_STAMP "${QT_BUILD_DIR}/.vox_qt_configure_stamp")
+set(VOX_QT_CONFIGURE_FLAGS
+    "-static;-c++std c++20;-static-runtime;-release;-nomake examples;-nomake tests;-prefix ${QT_BUILD_DIR};-sql-sqlite;-no-sql-psql;-no-sql-mysql;-no-sql-odbc"
+)
 
+function(vox_build_qtbase)
     set(qtbase_archive "qtbase-${VOX_QT_VERSION}.tar.gz")
     set(qtbase_archive_path "${CMAKE_CURRENT_BINARY_DIR}/${qtbase_archive}")
     set(qtbase_url "https://github.com/qt/qtbase/archive/refs/tags/v${VOX_QT_VERSION}.tar.gz")
     set(qtbase_source_dir "${CMAKE_CURRENT_BINARY_DIR}/qtbase-${VOX_QT_VERSION}")
+
+    set(qt_needs_configure TRUE)
+    if(EXISTS "${Qt6_DIR}/Qt6Config.cmake" AND EXISTS "${VOX_QT_CONFIGURE_STAMP}")
+        file(READ "${VOX_QT_CONFIGURE_STAMP}" qt_stamp_flags)
+        string(STRIP "${qt_stamp_flags}" qt_stamp_flags)
+        if(qt_stamp_flags STREQUAL "${VOX_QT_CONFIGURE_FLAGS}")
+            set(qt_needs_configure FALSE)
+        else()
+            message(STATUS "Bundled Qt configure flags changed; rebuilding Qt base at ${QT_BUILD_DIR}")
+            file(REMOVE_RECURSE "${QT_BUILD_DIR}")
+        endif()
+    elseif(EXISTS "${Qt6_DIR}/Qt6Config.cmake")
+        message(STATUS "Bundled Qt stamp missing; rebuilding Qt base to apply SQL driver flags")
+        file(REMOVE_RECURSE "${QT_BUILD_DIR}")
+    endif()
+
+    if(NOT qt_needs_configure)
+        return()
+    endif()
+
     vox_download_and_extract("${qtbase_url}" "${qtbase_archive_path}" "${qtbase_source_dir}"
         "src/network/CMakeLists.txt" "src/sql/CMakeLists.txt")
 
@@ -100,15 +121,27 @@ function(vox_build_qtbase)
         -nomake tests
         -prefix "${QT_BUILD_DIR}"
         -sql-sqlite
+        -no-sql-psql
+        -no-sql-mysql
+        -no-sql-odbc
     )
 
     message(STATUS "Configuring Qt base at ${QT_BUILD_DIR}")
     if(WIN32)
+        # Prevent Qt configure from auto-detecting MSVC libpq (incompatible with MinGW).
+        set(_saved_pg_root "$ENV{PostgreSQL_ROOT}")
+        set(_saved_pgroot "$ENV{PGROOT}")
+        set(_saved_lib "$ENV{LIB}")
+        set(ENV{PostgreSQL_ROOT} "")
+        set(ENV{PGROOT} "")
         execute_process(
             COMMAND "${qtbase_source_dir}/configure.bat" ${qt_configure_options}
             WORKING_DIRECTORY "${QT_BUILD_DIR}"
             RESULT_VARIABLE configure_result
         )
+        set(ENV{PostgreSQL_ROOT} "${_saved_pg_root}")
+        set(ENV{PGROOT} "${_saved_pgroot}")
+        set(ENV{LIB} "${_saved_lib}")
     else()
         execute_process(
             COMMAND "${qtbase_source_dir}/configure" ${qt_configure_options}
@@ -120,6 +153,8 @@ function(vox_build_qtbase)
     if(NOT configure_result EQUAL 0)
         message(FATAL_ERROR "Qt base configure failed with code ${configure_result}")
     endif()
+
+    file(WRITE "${VOX_QT_CONFIGURE_STAMP}" "${VOX_QT_CONFIGURE_FLAGS}")
 
     message(STATUS "Building Qt base")
     execute_process(
