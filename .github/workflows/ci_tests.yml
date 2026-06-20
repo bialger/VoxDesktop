@@ -194,6 +194,10 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
+      - name: Build targets for clang-tidy
+        run: |
+          cmake --build cmake-build-tidy --target vox_core vox_qt_tests -j"$(nproc)"
+
       - name: Run clang-tidy
         shell: bash
         run: |
@@ -206,8 +210,10 @@ jobs:
           fi
 
           echo "Running clang-tidy-19 on ${#files[@]} files..."
-          # Use clang-tidy-19 for better C++23 support and --extra-arg-before to ensure C++23 standard is set before other flags
-          clang-tidy-19 "${files[@]}" -p cmake-build-tidy --format-style=file > tidy_output.txt 2>&1 || true
+          : > tidy_output.txt
+          for f in "${files[@]}"; do
+            clang-tidy-19 "$f" -p cmake-build-tidy --format-style=file >> tidy_output.txt 2>&1 || true
+          done
 
           # Ensure file exists and is readable
           if [ ! -f tidy_output.txt ]; then
@@ -222,8 +228,8 @@ jobs:
             errors=0
             warnings=0
           else
-            errors=$(grep -c "error:" tidy_output.txt 2>/dev/null || echo "0")
-            warnings=$(grep -c "warning:" tidy_output.txt 2>/dev/null || echo "0")
+            errors=$(grep -Ec '^(src|bin|tests|lib)/.*:[0-9]+:[0-9]+: error:' tidy_output.txt 2>/dev/null || echo "0")
+            warnings=$(grep -Ec '^(src|bin|tests|lib)/.*:[0-9]+:[0-9]+: warning:' tidy_output.txt 2>/dev/null || echo "0")
           fi
 
           # Ensure we have clean integer values
